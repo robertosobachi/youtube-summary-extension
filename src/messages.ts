@@ -26,6 +26,8 @@ type Api = {
   'settings/get': { req: object; res: SettingsView };
   'settings/save': { req: { apiKey?: string; langs: string }; res: SettingsView };
   'key/test': { req: { apiKey?: string }; res: Outcome };
+  // Open to content scripts: says whether a key is saved, nothing more.
+  'key/status': { req: object; res: { hasKey: boolean } };
   'summary/get': { req: { id: string }; res: Summary | null };
   'summary/create': {
     req: { id: string; title: string; channel: string; transcript: string };

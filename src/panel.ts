@@ -42,6 +42,8 @@ header {
   overflow-y: auto;
   padding: 0 16px 16px;
 }
+.body.framed { padding: 0; overflow: hidden; }
+iframe { display: block; width: 100%; height: 100%; border: 0; }
 .body h2 { font-size: 18px; margin: 8px 0; }
 .body h3 { font-size: 15px; margin: 16px 0 4px; }
 .body p { margin: 4px 0; }
@@ -138,6 +140,7 @@ export function createPanel(onClose: () => void) {
 
   const open = (heading: string): void => {
     title.textContent = heading;
+    body.classList.remove('framed');
     body.replaceChildren();
     footer.replaceChildren();
     if (!host.isConnected) document.body.append(host);
@@ -164,6 +167,15 @@ export function createPanel(onClose: () => void) {
         button.addEventListener('click', () => action.run(button));
         footer.append(button);
       }
+    },
+    /** An extension page in a frame: its own process, so the page can't read what you type. */
+    frame(heading: string, src: string): void {
+      open(heading);
+      body.classList.add('framed');
+      const frame = el('iframe');
+      frame.src = src;
+      frame.title = heading;
+      body.append(frame);
     },
     close(): void {
       host.remove();

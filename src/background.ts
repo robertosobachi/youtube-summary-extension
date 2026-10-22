@@ -180,6 +180,8 @@ async function handle(msg: Message): Promise<unknown> {
       return saveSettings(msg.apiKey, msg.langs);
     case 'key/test':
       return testKey(msg.apiKey);
+    case 'key/status':
+      return { hasKey: Boolean((await getSettings()).apiKey) };
     case 'summary/get':
       return isVideoId(msg.id) ? ((await getSummaries())[msg.id] ?? null) : null;
     case 'summary/create':

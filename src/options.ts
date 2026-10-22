@@ -1,6 +1,9 @@
 import { send } from './messages';
 import type { SettingsView } from './messages';
 
+// Framed in the YouTube drawer, which has its own heading.
+if (window.top !== window) document.documentElement.classList.add('embedded');
+
 const form = document.querySelector<HTMLFormElement>('#settings')!;
 const keyInput = document.querySelector<HTMLInputElement>('#api-key')!;
 const langsInput = document.querySelector<HTMLInputElement>('#langs')!;

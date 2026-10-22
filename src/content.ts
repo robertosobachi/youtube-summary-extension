@@ -43,6 +43,7 @@ window.addEventListener('message', (event) => {
   } else if (msg.type === 'nav') {
     if (msg.video) remember(msg.video);
     panel.close();
+    promptForKey();
     scheduleScan();
   } else if (msg.type === 'tiles') {
     msg.tiles.forEach(remember);
@@ -147,6 +148,24 @@ function showSummary(id: string, entry: Summary, fromTile: boolean, note?: strin
   panel.show(`${entry.title} (${entry.channel})`, entry.summary, actions, note);
 }
 
+const openSettings = (): void => panel.frame('Settings', chrome.runtime.getURL('options.html'));
+
+async function hasKey(): Promise<boolean> {
+  return (await send('key/status', {})).hasKey;
+}
+
+// Once per page load: closing the settings keeps them closed until the next reload.
+let keyPrompted = false;
+function promptForKey(): void {
+  if (keyPrompted) return;
+  keyPrompted = true;
+  hasKey()
+    .then((ok) => {
+      if (!ok) openSettings();
+    })
+    .catch(() => {});
+}
+
 // The latest click wins the drawer; an older one finishing later stays quiet.
 let current = 0;
 // The summary the open drawer is waiting for, so closing it can cancel the work.
@@ -172,6 +191,10 @@ async function summarise(id: string, fromTile = false): Promise<void> {
     const cached = await send('summary/get', { id });
     if (stale()) return;
     if (cached && 'summary' in cached) return showSummary(id, cached, fromTile);
+
+    const keySaved = await hasKey();
+    if (stale()) return;
+    if (!keySaved) return openSettings();
 
     const { title, channel } = await videoMeta(id);
     panel.loading(`${title} (${channel})`, 'Fetching the transcript...');

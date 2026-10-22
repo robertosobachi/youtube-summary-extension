@@ -27,7 +27,7 @@ npm run build
 
 ## Setup
 
-Open the extension's options page (Details > Extension options on `chrome://extensions`) and fill in:
+With no API key saved, the settings open in the drawer on YouTube: once when the page loads, and again whenever you click Summarise. You can also open the extension's options page (Details > Extension options on `chrome://extensions`). Fill in:
 
 - **Anthropic API key:** create one in the Claude Console at [platform.claude.com/settings/keys](https://platform.claude.com/settings/keys). Leave the field empty later to keep the saved key.
 - **Summary languages:** comma-separated language codes, for example `en, it`. Defaults to `en`.
@@ -40,7 +40,8 @@ Click Save. Test key checks the key against the API without generating a summary
 
 - The API key, language list, cached summaries (title, channel, summary, transcript) and your Not interested videos are kept in `chrome.storage.local`, in this browser only.
 - Storage is restricted to the extension's own pages and service worker. Content scripts on youtube.com can't read it.
-- Only the service worker reads the key. The options page sees whether a key is saved and its last 4 characters.
+- Only the service worker reads the key. The options page sees whether a key is saved and its last 4 characters. Content scripts only learn whether a key is saved.
+- In the YouTube drawer, the settings are the options page in a frame. It runs in the extension's own process, so YouTube's scripts can't read the key as you type it.
 
 **What goes to api.anthropic.com**
 
@@ -59,6 +60,7 @@ The extension makes no other network requests.
 - `storage`: settings, cached summaries and Not interested videos.
 - `https://www.youtube.com/*`: the site the content scripts run on.
 - `https://api.anthropic.com/*`: lets the service worker call the Claude API.
+- `options.html` is web-accessible on youtube.com, so it can be framed in the drawer.
 
 ## Development
 
