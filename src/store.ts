@@ -3,6 +3,9 @@ import type { Summary } from './messages';
 
 export type Summaries = Record<string, Summary>;
 
+/** Videos you marked Not interested from the drawer: id -> "title [channel]". */
+export type Rejected = Record<string, string>;
+
 /**
  * Drops the oldest 10% of summaries by `at` (at least one) to get back under the storage
  * quota. `keep` is the summary being saved, which never goes.

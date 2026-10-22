@@ -14,7 +14,30 @@ export const SELECTORS = {
     'ytd-watch-metadata #actions',
     'ytd-watch-metadata #top-row',
   ],
+  /** Home feed tiles. YouTube keeps the Home page element alive, hidden, on other pages. */
+  homeTile: 'ytd-browse[page-subtype="home"] ytd-rich-item-renderer',
+  /** The tile's own video link; Shorts tiles link to /shorts/ and never match. */
+  tileLink: 'a[href*="/watch?v="]',
+  /**
+   * The thumbnail the tile Summarise button sits on, top right; first match wins, else the
+   * tile itself. It must be positioned, as it is for YouTube's own duration badge.
+   */
+  tileThumbnail: [
+    'yt-thumbnail-view-model',
+    '.yt-lockup-view-model__content-image',
+    '.yt-lockup-view-model-wiz__content-image',
+  ],
 };
+
+export const BROWSE_PATH = '/youtubei/v1/browse';
+export const FEEDBACK_PATH = '/youtubei/v1/feedback';
+const HOME_BROWSE_ID = 'FEwhat_to_watch';
+const VIDEO_LOCKUP = 'LOCKUP_CONTENT_TYPE_VIDEO';
+// Menu items are matched by icon because labels follow the browser's language.
+const NOT_INTERESTED_ICON = 'HIDE';
+const NOT_INTERESTED_LABEL = 'Not interested';
+// "Don't recommend channel": never ours to send.
+const NEVER_ICON = 'REMOVE';
 
 export const TRANSCRIPT_PATH = '/youtubei/v1/get_panel?prettyPrint=false';
 const TRANSCRIPT_PANEL = 'PAmodern_transcript_view';
@@ -96,6 +119,124 @@ export function watchVideo(detail: unknown): VideoMeta | null {
   const { videoId, title, author } = details;
   if (!isVideoId(videoId) || typeof title !== 'string' || typeof author !== 'string') return null;
   return { id: videoId, title, channel: author };
+}
+
+/** A Home video and, when its menu has one, the whole Not interested command. */
+export type HomeTile = VideoMeta & { command?: unknown };
+
+/** True when the response is the Home feed: first page, SPA navigation or continuation. */
+export function isHomeResponse(data: unknown): boolean {
+  const context = isObject(data) ? data.responseContext : null;
+  const services = isObject(context) ? context.serviceTrackingParams : null;
+  if (!Array.isArray(services)) return false;
+  return services.some(
+    (service) =>
+      isObject(service) &&
+      Array.isArray(service.params) &&
+      service.params.some(
+        (param) => isObject(param) && param.key === 'browse_id' && param.value === HOME_BROWSE_ID,
+      ),
+  );
+}
+
+/** The InnerTube response in a `yt-navigate-finish` detail, when it is Home. */
+export function navResponse(detail: unknown): unknown {
+  const wrapper = isObject(detail) ? detail.response : null;
+  const inner = isObject(wrapper) ? wrapper.response : null;
+  return [inner, wrapper].find(isHomeResponse) ?? null;
+}
+
+/** Follows object keys from `node`, or undefined at the first missing step. */
+const at = (node: unknown, path: readonly string[]): unknown =>
+  path.reduce<unknown>((step, key) => (isObject(step) ? step[key] : undefined), node);
+
+// Paths inside a `lockupViewModel`.
+const MENU_ITEMS = [
+  'metadata',
+  'lockupMetadataViewModel',
+  'menuButton',
+  'buttonViewModel',
+  'onTap',
+  'innertubeCommand',
+  'showSheetCommand',
+  'panelLoadingStrategy',
+  'inlineContent',
+  'sheetViewModel',
+  'content',
+  'listViewModel',
+  'listItems',
+];
+const TITLE = ['metadata', 'lockupMetadataViewModel', 'title', 'content'];
+const METADATA_ROWS = [
+  'metadata',
+  'lockupMetadataViewModel',
+  'metadata',
+  'contentMetadataViewModel',
+  'metadataRows',
+];
+// Inside a menu `listItemViewModel`.
+const ITEM_ICON = ['leadingImage', 'sources', '0', 'clientResource', 'imageName'];
+const ITEM_LABEL = ['title', 'content'];
+const ITEM_COMMAND = ['rendererContext', 'commandContext', 'onTap', 'innertubeCommand'];
+
+/**
+ * The lockup menu's Not interested command, whole, as YouTube's own menu would send it.
+ * Matched by the HIDE icon, else by the English label; the REMOVE item never matches.
+ */
+export function notInterestedCommand(lockup: unknown): unknown {
+  const items = at(lockup, MENU_ITEMS);
+  if (!Array.isArray(items)) return undefined;
+  const menu = items.map((item) => at(item, ['listItemViewModel'])).filter(isObject);
+  const item =
+    menu.find((item) => at(item, ITEM_ICON) === NOT_INTERESTED_ICON) ??
+    menu.find(
+      (item) => at(item, ITEM_ICON) !== NEVER_ICON && at(item, ITEM_LABEL) === NOT_INTERESTED_LABEL,
+    );
+  const command = at(item, ITEM_COMMAND);
+  return isObject(command) && isObject(command.feedbackEndpoint) ? command : undefined;
+}
+
+function homeTile(lockup: Json): HomeTile | null {
+  const { contentId, contentType } = lockup;
+  if (contentType !== VIDEO_LOCKUP || !isVideoId(contentId)) return null;
+  const rows = at(lockup, METADATA_ROWS);
+  const parts: unknown[] = Array.isArray(rows)
+    ? rows.flatMap((row) => at(row, ['metadataParts']) ?? [])
+    : [];
+  const title = at(lockup, TITLE);
+  const channel = at(parts[0], ['text', 'content']);
+  const command = notInterestedCommand(lockup);
+  return {
+    id: contentId,
+    title: typeof title === 'string' ? title : contentId,
+    channel: typeof channel === 'string' ? channel : 'unknown channel',
+    ...(command ? { command } : {}),
+  };
+}
+
+/**
+ * Every video `lockupViewModel` in a Home response. Ads have no content type and Shorts are
+ * `shortsLockupViewModel`, so neither matches. Commands belong to the enclosing lockup.
+ */
+export function homeTiles(data: unknown): HomeTile[] {
+  const tiles: HomeTile[] = [];
+  const walk = (node: unknown): void => {
+    if (Array.isArray(node)) {
+      node.forEach(walk);
+      return;
+    }
+    if (!isObject(node)) return;
+    for (const [key, value] of Object.entries(node)) {
+      if (key === 'lockupViewModel' && isObject(value)) {
+        const tile = homeTile(value);
+        if (tile) tiles.push(tile);
+        continue;
+      }
+      walk(value);
+    }
+  };
+  walk(data);
+  return tiles;
 }
 
 /** Same-origin oEmbed, as the CLI uses for titles: no auth, public data only. */

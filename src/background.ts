@@ -15,7 +15,7 @@ import { evictOldest } from './store';
 import { isVideoId } from './youtube';
 import type { Message, Outcome, Settings, SettingsView, Summary, SummaryResult } from './messages';
 import type { StreamState } from './claude';
-import type { Summaries } from './store';
+import type { Rejected, Summaries } from './store';
 
 // storage.local is exposed to content scripts by default. The docs don't say whether this
 // persists, so it is set on every start.
@@ -65,13 +65,14 @@ async function testKey(apiKey: string | undefined): Promise<Outcome> {
 }
 
 /** POSTs a streamed Messages request and folds its events into one state. */
-async function stream(apiKey: string, body: object): Promise<StreamState> {
+async function stream(apiKey: string, body: object, signal: AbortSignal): Promise<StreamState> {
   const keepAlive = setInterval(() => chrome.runtime.getPlatformInfo(), KEEP_ALIVE_MS);
   try {
     const res = await fetch(`${API}/messages`, {
       method: 'POST',
       headers: headers(apiKey),
       body: JSON.stringify(body),
+      signal,
     });
     if (!res.ok || !res.body) {
       return { ...emptyStream(), error: errorMessage(res.status, await res.text()) };
@@ -115,11 +116,12 @@ async function createSummary(
   title: string,
   channel: string,
   transcript: string,
+  signal: AbortSignal,
 ): Promise<SummaryResult> {
   const { apiKey, langs } = await getSettings();
   if (!apiKey) return { ok: false, error: 'No API key. Add one in the extension options.' };
   const result = finishSummary(
-    await stream(apiKey, summaryRequest({ title, channel, langs, transcript })),
+    await stream(apiKey, summaryRequest({ title, channel, langs, transcript }), signal),
   );
   if (!result.ok) return result;
   const entry: Summary = { title, channel, summary: result.text, transcript, at: Date.now() };
@@ -132,20 +134,42 @@ async function createSummary(
   }
 }
 
-// A second click while a summary is on its way waits for the same call.
-const pending = new Map<string, Promise<SummaryResult>>();
+/** Records one of your own Not interested clicks, moved to the end if already there. */
+function addRejected(msg: Extract<Message, { type: 'rejected/add' }>): Promise<Outcome> {
+  const { id, title, channel } = msg;
+  if (!isVideoId(id) || typeof title !== 'string' || typeof channel !== 'string') {
+    return Promise.resolve({ ok: false, error: 'Bad rejected request.' });
+  }
+  return serialised(async () => {
+    const { rejected } = await chrome.storage.local.get('rejected');
+    const { [id]: _previous, ...rest } = (rejected as Rejected | undefined) ?? {};
+    await chrome.storage.local.set({ rejected: { ...rest, [id]: `${title} [${channel}]` } });
+    return { ok: true };
+  });
+}
+
+// A second click while a summary is on its way waits for the same call. Closing the drawer
+// aborts it, and nothing is stored.
+const pending = new Map<string, { run: Promise<SummaryResult>; abort: AbortController }>();
 
 function summarise(msg: Extract<Message, { type: 'summary/create' }>): Promise<SummaryResult> {
   const { id, title, channel, transcript } = msg;
   if (!isVideoId(id) || !transcript || typeof title !== 'string' || typeof channel !== 'string') {
     return Promise.resolve({ ok: false, error: 'Bad summary request.' });
   }
-  let run = pending.get(id);
-  if (!run) {
-    run = createSummary(id, title, channel, transcript).finally(() => pending.delete(id));
-    pending.set(id, run);
+  let call = pending.get(id);
+  if (!call) {
+    const abort = new AbortController();
+    const run = createSummary(id, title, channel, transcript, abort.signal)
+      .catch((err: unknown): SummaryResult => {
+        if (abort.signal.aborted) return { ok: false, error: 'Cancelled.' };
+        throw err;
+      })
+      .finally(() => pending.delete(id));
+    call = { run, abort };
+    pending.set(id, call);
   }
-  return run;
+  return call.run;
 }
 
 async function handle(msg: Message): Promise<unknown> {
@@ -160,6 +184,11 @@ async function handle(msg: Message): Promise<unknown> {
       return isVideoId(msg.id) ? ((await getSummaries())[msg.id] ?? null) : null;
     case 'summary/create':
       return summarise(msg);
+    case 'summary/cancel':
+      pending.get(msg.id)?.abort.abort();
+      return { ok: true };
+    case 'rejected/add':
+      return addRejected(msg);
   }
 }
 

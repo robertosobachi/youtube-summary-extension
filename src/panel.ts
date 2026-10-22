@@ -116,7 +116,8 @@ export function renderMarkdown(markdown: string): DocumentFragment {
   return out;
 }
 
-export function createPanel() {
+/** `onClose` runs when you close the drawer yourself, not when the code closes it. */
+export function createPanel(onClose: () => void) {
   const host = document.createElement('yts-panel');
   const root = host.attachShadow({ mode: 'closed' });
   const style = el('style', undefined, CSS);
@@ -127,7 +128,10 @@ export function createPanel() {
   const body = el('div', 'body');
   const footer = el('footer');
   close.title = 'Close';
-  close.addEventListener('click', () => host.remove());
+  close.addEventListener('click', () => {
+    host.remove();
+    onClose();
+  });
   header.append(title, close);
   drawer.append(header, body, footer);
   root.append(style, drawer);

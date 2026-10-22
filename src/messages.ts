@@ -31,6 +31,8 @@ type Api = {
     req: { id: string; title: string; channel: string; transcript: string };
     res: SummaryResult;
   };
+  'summary/cancel': { req: { id: string }; res: Outcome };
+  'rejected/add': { req: VideoMeta; res: Outcome };
 };
 
 export type MessageType = keyof Api;
@@ -41,6 +43,10 @@ export type Reply<K extends MessageType> = Api[K]['res'];
 export const PRIVILEGED: readonly MessageType[] = ['settings/get', 'settings/save', 'key/test'];
 
 export function send<K extends MessageType>(type: K, req: Api[K]['req']): Promise<Reply<K>> {
+  // A reloaded extension leaves the scripts already in open tabs without chrome.runtime.
+  if (!chrome.runtime?.id) {
+    return Promise.reject(new Error('The extension was reloaded. Reload this page.'));
+  }
   return chrome.runtime.sendMessage({ type, ...req });
 }
 
@@ -60,11 +66,17 @@ export function parseLangs(input: string): string[] {
 export const PAGE_SOURCE = 'yts-page';
 export const CONTENT_SOURCE = 'yts-content';
 
+/** A Home tile as content.ts sees it: `ni` says page.ts holds a Not interested command. */
+export type TileMeta = VideoMeta & { ni: boolean };
+
 export type PageMessage =
   | { type: 'cfg'; nonce: string; cfg: InnertubeConfig | null }
-  | { type: 'nav'; pageType: string; video: VideoMeta | null };
+  | { type: 'nav'; pageType: string; video: VideoMeta | null }
+  | { type: 'tiles'; tiles: TileMeta[] }
+  // `sent: false`: nothing was dispatched. `status: null`: no feedback request seen in time.
+  | { type: 'ni-result'; id: string; sent: boolean; status: number | null };
 
-export type ContentMessage = { type: 'cfg?'; nonce: string };
+export type ContentMessage = { type: 'cfg?'; nonce: string } | { type: 'ni'; id: string };
 
 export function isFrom<T>(event: MessageEvent, source: string): event is MessageEvent<T> {
   return (
