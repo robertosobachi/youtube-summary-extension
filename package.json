@@ -1,0 +1,42 @@
+{
+  "name": "youtube-summary-extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/page.ts src/content.ts src/background.ts src/options.ts --bundle --format=iife --target=chrome120 --outdir=dist && cp manifest.json options.html dist/",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky || true"
+  },
+  "lint-staged": {
+    "*.{ts,js,mjs}": [
+      "prettier --write",
+      "eslint --max-warnings=0"
+    ],
+    "*.{json,md,css,html}": [
+      "prettier --write"
+    ]
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@types/chrome": "0.3.6",
+    "esbuild": "0.28.2",
+    "eslint": "9.39.5",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-import": "2.32.0",
+    "eslint-plugin-prettier": "5.5.7",
+    "globals": "17.13.0",
+    "husky": "9.1.7",
+    "jiti": "2.7.0",
+    "lint-staged": "16.4.0",
+    "prettier": "3.9.10",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.0",
+    "vitest": "5.0.5"
+  }
+}
