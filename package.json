@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "esbuild src/page.ts src/content.ts src/background.ts src/options.ts --bundle --format=iife --target=chrome120 --outdir=dist && cp manifest.json options.html dist/",
+    "build": "esbuild src/page.ts src/content.ts src/background.ts src/options.ts --bundle --format=iife --target=chrome120 --outdir=dist && cp manifest.json options.html dist/ && cp -R icons dist/",
+    "icons": "node scripts/icons.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
+    "@resvg/resvg-js": "2.6.2",
     "@types/chrome": "0.3.6",
     "esbuild": "0.28.2",
     "eslint": "9.39.5",
