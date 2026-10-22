@@ -1,0 +1,80 @@
+// Messages between extension contexts. The service worker is the only receiver of
+// chrome.runtime messages and the only owner of storage and the API key.
+import type { InnertubeConfig, VideoMeta } from './youtube';
+
+export const DEFAULT_LANGS = ['en'];
+
+export type Settings = { apiKey: string; langs: string[] };
+
+/** What extension pages see of the settings: never the key itself. */
+export type SettingsView = { hasKey: boolean; keyHint: string; langs: string[] };
+
+export type Summary = {
+  title: string;
+  channel: string;
+  summary: string;
+  transcript: string;
+  at: number;
+};
+
+export type Outcome = { ok: true } | { ok: false; error: string };
+
+export type SummaryResult =
+  { ok: true; entry: Summary; warning?: string } | { ok: false; error: string };
+
+type Api = {
+  'settings/get': { req: object; res: SettingsView };
+  'settings/save': { req: { apiKey?: string; langs: string }; res: SettingsView };
+  'key/test': { req: { apiKey?: string }; res: Outcome };
+  'summary/get': { req: { id: string }; res: Summary | null };
+  'summary/create': {
+    req: { id: string; title: string; channel: string; transcript: string };
+    res: SummaryResult;
+  };
+};
+
+export type MessageType = keyof Api;
+export type Message = { [K in MessageType]: { type: K } & Api[K]['req'] }[MessageType];
+export type Reply<K extends MessageType> = Api[K]['res'];
+
+/** Settings and key messages are only accepted from the extension's own pages. */
+export const PRIVILEGED: readonly MessageType[] = ['settings/get', 'settings/save', 'key/test'];
+
+export function send<K extends MessageType>(type: K, req: Api[K]['req']): Promise<Reply<K>> {
+  return chrome.runtime.sendMessage({ type, ...req });
+}
+
+/** "en, it" -> ['en', 'it']: lower-case codes, no duplicates, `en` when empty. */
+export function parseLangs(input: string): string[] {
+  const codes = input
+    .split(/[\s,]+/)
+    .map((code) => code.trim().toLowerCase())
+    .filter(Boolean);
+  return codes.length ? [...new Set(codes)] : DEFAULT_LANGS;
+}
+
+// window.postMessage between page.ts (MAIN world) and content.ts (ISOLATED world). Both
+// sides check the source tag and `event.source === window`. Page scripts can see these, so
+// nothing private ever goes through: no key, no storage data, no feedback commands.
+
+export const PAGE_SOURCE = 'yts-page';
+export const CONTENT_SOURCE = 'yts-content';
+
+export type PageMessage =
+  | { type: 'cfg'; nonce: string; cfg: InnertubeConfig | null }
+  | { type: 'nav'; pageType: string; video: VideoMeta | null };
+
+export type ContentMessage = { type: 'cfg?'; nonce: string };
+
+export function isFrom<T>(event: MessageEvent, source: string): event is MessageEvent<T> {
+  return (
+    event.source === window &&
+    typeof event.data === 'object' &&
+    event.data !== null &&
+    event.data.source === source
+  );
+}
+
+export function post(source: string, msg: PageMessage | ContentMessage): void {
+  window.postMessage({ source, ...msg }, location.origin);
+}

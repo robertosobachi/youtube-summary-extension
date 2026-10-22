@@ -1,0 +1,146 @@
+{
+  "content": {
+    "engagementPanelSectionListRenderer": {
+      "content": {
+        "sectionListRenderer": {
+          "contents": [
+            {
+              "itemSectionRenderer": {
+                "header": {
+                  "macroMarkersPanelItemViewModel": {
+                    "item": {
+                      "timelineChapterViewModel": {
+                        "title": "Chapter 1",
+                        "index": 0
+                      }
+                    }
+                  }
+                },
+                "contents": [
+                  {
+                    "macroMarkersPanelItemViewModel": {
+                      "item": {
+                        "timelineItemViewModel": {
+                          "timestamp": "0:00",
+                          "contentItems": [
+                            {
+                              "transcriptSegmentViewModel": {
+                                "simpleText": "Segment 1",
+                                "timestamp": "0:00"
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "macroMarkersPanelItemViewModel": {
+                      "item": {
+                        "timelineItemViewModel": {
+                          "timestamp": "0:04",
+                          "contentItems": [
+                            {
+                              "transcriptSegmentViewModel": {
+                                "simpleText": "Segment 2",
+                                "timestamp": "0:04"
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "macroMarkersPanelItemViewModel": {
+                      "item": {
+                        "timelineItemViewModel": {
+                          "timestamp": "0:10",
+                          "contentItems": [
+                            {
+                              "transcriptSegmentViewModel": {
+                                "simpleText": "Segment 3",
+                                "timestamp": "0:10"
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "itemSectionRenderer": {
+                "header": {
+                  "macroMarkersPanelItemViewModel": {
+                    "item": {
+                      "timelineChapterViewModel": {
+                        "title": "Chapter 2",
+                        "index": 0
+                      }
+                    }
+                  }
+                },
+                "contents": [
+                  {
+                    "macroMarkersPanelItemViewModel": {
+                      "item": {
+                        "timelineItemViewModel": {
+                          "timestamp": "1:32",
+                          "contentItems": [
+                            {
+                              "transcriptSegmentViewModel": {
+                                "simpleText": "Segment 4",
+                                "timestamp": "1:32"
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "macroMarkersPanelItemViewModel": {
+                      "item": {
+                        "timelineItemViewModel": {
+                          "timestamp": "1:37",
+                          "contentItems": [
+                            {
+                              "transcriptSegmentViewModel": {
+                                "simpleText": "Segment 5",
+                                "timestamp": "1:37"
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "macroMarkersPanelItemViewModel": {
+                      "item": {
+                        "timelineItemViewModel": {
+                          "timestamp": "1:44",
+                          "contentItems": [
+                            {
+                              "transcriptSegmentViewModel": {
+                                "simpleText": "Segment 6",
+                                "timestamp": "1:44"
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>YouTube Summary options</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #fff;
+        --fg: #0f0f0f;
+        --muted: #606060;
+        --border: #d3d3d3;
+        --ok: #1e7e34;
+        --error: #c5221f;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0f0f0f;
+          --fg: #f1f1f1;
+          --muted: #aaa;
+          --border: #3f3f3f;
+          --ok: #81c995;
+          --error: #f28b82;
+        }
+      }
+      body {
+        margin: 0;
+        padding: 32px 16px;
+        background: var(--bg);
+        color: var(--fg);
+        font:
+          14px/1.5 system-ui,
+          sans-serif;
+      }
+      main {
+        max-width: 520px;
+        margin: 0 auto;
+      }
+      label {
+        display: block;
+        margin-top: 20px;
+        font-weight: 600;
+      }
+      input {
+        box-sizing: border-box;
+        width: 100%;
+        margin-top: 6px;
+        padding: 8px 10px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+      }
+      .hint {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 24px;
+      }
+      button {
+        padding: 8px 16px;
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+      }
+      button[type='submit'] {
+        background: var(--fg);
+        color: var(--bg);
+        border-color: var(--fg);
+      }
+      #status {
+        display: block;
+        margin-top: 16px;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      #status[data-state='ok'] {
+        color: var(--ok);
+      }
+      #status[data-state='error'] {
+        color: var(--error);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>YouTube Summary</h1>
+      <form id="settings">
+        <label for="api-key">Anthropic API key</label>
+        <input id="api-key" type="password" autocomplete="off" spellcheck="false" />
+        <p class="hint">Stored only in this browser. Leave empty to keep the saved key.</p>
+
+        <label for="langs">Summary languages</label>
+        <input id="langs" type="text" spellcheck="false" placeholder="en" />
+        <p class="hint">
+          Language codes, e.g. <code>en, it</code>. A transcript in one of them is summarised in its
+          own language, any other in English.
+        </p>
+
+        <div class="actions">
+          <button type="submit">Save</button>
+          <button type="button" id="test">Test key</button>
+        </div>
+        <output id="status" aria-live="polite"></output>
+      </form>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>
