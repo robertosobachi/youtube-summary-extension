@@ -192,17 +192,43 @@ async function summarise(id: string, fromTile = false): Promise<void> {
 }
 
 // The tile button, over the thumbnail's top-left corner: the top right gets YouTube's own
-// hover buttons. Dark like YouTube's badges, white on hover so it reads as clickable.
+// hover buttons. A round icon, with the label sliding out on hover so it says what it does.
 const OVERLAY_CSS = `
   :host { position: absolute; top: 8px; left: 8px; z-index: 2; margin: 0; }
   button {
-    height: 28px; padding: 0 12px; font-size: 12px;
-    background: rgba(0, 0, 0, 0.7); color: #fff;
-    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.3);
+    height: 32px; padding: 0 7px; gap: 0; border-radius: 16px;
+    background: rgba(255, 255, 255, 0.95); color: #0f0f0f;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    font-size: 12px;
   }
-  button:hover { background: #fff; color: #0f0f0f; }
-  button:active { background: #d9d9d9; color: #0f0f0f; }
+  .label {
+    max-width: 0; opacity: 0; overflow: hidden;
+    transition: max-width 0.15s, opacity 0.15s, margin 0.15s;
+  }
+  button:hover, button:focus-visible { background: #fff; }
+  button:hover .label, button:focus-visible .label { max-width: 80px; opacity: 1; margin: 0 5px 0 6px; }
+  button:active { background: #ececec; }
 `;
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/** Three lines of text and a sparkle: a summary, not a video. Built without markup strings. */
+function summaryIcon(): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  const lines = document.createElementNS(SVG_NS, 'path');
+  lines.setAttribute('d', 'M4 6h16M4 11h16M4 16h8');
+  lines.setAttribute('fill', 'none');
+  lines.setAttribute('stroke', 'currentColor');
+  lines.setAttribute('stroke-width', '2.2');
+  lines.setAttribute('stroke-linecap', 'round');
+  const sparkle = document.createElementNS(SVG_NS, 'path');
+  sparkle.setAttribute('d', 'M18 13q.6 3.4 4 4-3.4.6-4 4-.6-3.4-4-4 3.4-.6 4-4z');
+  sparkle.setAttribute('fill', 'currentColor');
+  svg.append(lines, sparkle);
+  return svg;
+}
 
 // A small closed-shadow host for our own buttons, so YouTube's CSS can't reach them and
 // clicks never reach YouTube's handlers.
@@ -213,19 +239,26 @@ function buttonHost(label: string, onClick: () => void, overlay = false): HTMLEl
   style.textContent = `
     :host { all: initial; display: inline-flex; align-items: center; margin-right: 8px; }
     button {
-      height: 36px; padding: 0 16px; border: 0; border-radius: 18px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px;
+      height: 36px; padding: 0 16px 0 12px; border: 0; border-radius: 18px; cursor: pointer;
       background: var(--yt-spec-badge-chip-background, rgba(0, 0, 0, 0.05));
       color: var(--yt-spec-text-primary, #0f0f0f);
       font: 500 14px Roboto, Arial, sans-serif;
+      white-space: nowrap;
       transition: background-color 0.1s, color 0.1s, transform 0.1s;
     }
+    svg { width: 18px; height: 18px; flex: none; color: #d97757; }
     button:hover { background: var(--yt-spec-button-chip-background-hover, rgba(0, 0, 0, 0.1)); }
     button:active { transform: scale(0.95); }
     button:focus-visible { outline: 2px solid var(--yt-spec-call-to-action, #065fd4); outline-offset: 2px; }
     ${overlay ? OVERLAY_CSS : ''}
   `;
   const button = document.createElement('button');
-  button.textContent = label;
+  const text = document.createElement('span');
+  text.className = 'label';
+  text.textContent = label;
+  button.setAttribute('aria-label', label);
+  button.append(summaryIcon(), text);
   button.addEventListener('click', (event) => {
     event.preventDefault();
     event.stopPropagation();
