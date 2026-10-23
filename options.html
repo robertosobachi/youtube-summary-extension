@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>YouTube Summary options</title>
+    <title>Refeed for YouTube options</title>
     <style>
       :root {
         color-scheme: light dark;
@@ -90,6 +90,10 @@
         align-items: center;
         gap: 8px;
       }
+      /* Part of the key field above it. */
+      label.consent {
+        margin-top: 12px;
+      }
       input:not([type='checkbox']),
       select {
         box-sizing: border-box;
@@ -142,11 +146,21 @@
   </head>
   <body>
     <main>
-      <h1>YouTube Summary</h1>
+      <h1>Refeed for YouTube</h1>
       <form id="settings">
         <label for="api-key">Anthropic API key</label>
         <input id="api-key" type="password" autocomplete="off" spellcheck="false" />
         <p class="hint">Stored only in this browser. Leave empty to keep the saved key.</p>
+
+        <label class="toggle consent">
+          <input id="consent" type="checkbox" />
+          Send transcripts to Anthropic
+        </label>
+        <p class="hint">
+          Required to save a key. When you click Summarise, the video's title, channel and
+          transcript are sent with your key to Anthropic's Claude API (api.anthropic.com), and
+          billed to your Anthropic account.
+        </p>
 
         <fieldset id="langs">
           <legend>Summary languages</legend>

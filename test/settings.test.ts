@@ -5,6 +5,7 @@ import {
   MAX_AGE_OPTIONS,
   normaliseLangs,
   parseMaxAgeDays,
+  summaryBlocker,
 } from '../src/messages';
 
 describe('normaliseLangs', () => {
@@ -37,6 +38,20 @@ describe('parseMaxAgeDays', () => {
 
   it('offers the default', () => {
     expect(MAX_AGE_OPTIONS.map((o) => o.days)).toContain(DEFAULT_MAX_AGE_DAYS);
+  });
+});
+
+describe('summaryBlocker', () => {
+  it('needs a key first', () => {
+    expect(summaryBlocker({ apiKey: '', consent: true })).toMatch(/No API key/);
+  });
+
+  it('needs consent before anything goes to Anthropic', () => {
+    expect(summaryBlocker({ apiKey: 'sk-ant-x', consent: false })).toMatch(/Agree/);
+  });
+
+  it('lets a summary through with both', () => {
+    expect(summaryBlocker({ apiKey: 'sk-ant-x', consent: true })).toBeNull();
   });
 });
 

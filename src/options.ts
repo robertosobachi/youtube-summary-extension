@@ -19,6 +19,7 @@ if (theme === 'dark' || theme === 'light') document.documentElement.dataset.them
 
 const form = document.querySelector<HTMLFormElement>('#settings')!;
 const keyInput = document.querySelector<HTMLInputElement>('#api-key')!;
+const consentBox = document.querySelector<HTMLInputElement>('#consent')!;
 const langsList = document.querySelector<HTMLDivElement>('#langs .list')!;
 const maxAgeSelect = document.querySelector<HTMLSelectElement>('#max-age')!;
 const hidePromosBox = document.querySelector<HTMLInputElement>('#hide-promos')!;
@@ -28,6 +29,8 @@ const status = document.querySelector<HTMLOutputElement>('#status')!;
 function show(settings: SettingsView): void {
   keyInput.value = '';
   keyInput.placeholder = settings.hasKey ? `Saved key ending in ${settings.keyHint}` : 'sk-ant-...';
+  consentBox.checked = settings.consent;
+  consentBox.required = false;
   showLangs(settings.langs);
   maxAgeSelect.value = String(settings.maxAgeDays);
   savedMaxAge = settings.maxAgeDays;
@@ -77,12 +80,27 @@ function report(text: string, ok: boolean): void {
   status.dataset.state = ok ? 'ok' : 'error';
 }
 
+// A new key only saves with consent: the browser blocks Save and points at the box.
+keyInput.addEventListener('input', () => {
+  consentBox.required = Boolean(keyInput.value.trim());
+});
+
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
   const maxAgeDays = Number(maxAgeSelect.value);
   const ageChanged = maxAgeDays !== savedMaxAge;
-  show(await send('settings/save', { apiKey: keyInput.value, langs: checkedLangs(), maxAgeDays }));
-  report(ageChanged ? 'Saved. Reload YouTube to refilter videos already shown.' : 'Saved.', true);
+  const saved = await send('settings/save', {
+    apiKey: keyInput.value,
+    consent: consentBox.checked,
+    langs: checkedLangs(),
+    maxAgeDays,
+  });
+  show(saved);
+  if (saved.hasKey && !saved.consent) {
+    report('Saved. Tick Send transcripts to Anthropic to summarise.', false);
+  } else {
+    report(ageChanged ? 'Saved. Reload YouTube to refilter videos already shown.' : 'Saved.', true);
+  }
 });
 
 // Saved on its own, without Save: open YouTube tabs apply it at once.
@@ -107,4 +125,10 @@ testButton.addEventListener('click', async () => {
   }
 });
 
-send('settings/get', {}).then(show);
+// Summarise opens the settings when consent is missing: say why.
+send('settings/get', {}).then((settings) => {
+  show(settings);
+  if (settings.hasKey && !settings.consent) {
+    report('Tick Send transcripts to Anthropic and save to summarise.', false);
+  }
+});

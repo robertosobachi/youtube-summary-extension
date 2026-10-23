@@ -38,16 +38,31 @@ export const DEFAULT_HIDE_PROMOS = false;
 /** youtube.com localStorage key: content.ts mirrors the promo toggle there, '1' for on. */
 export const PROMOS_KEY = 'yts:hidePromos';
 
-export type Settings = { apiKey: string; langs: string[]; maxAgeDays: number; hidePromos: boolean };
+/** `consent`: the user agreed to send transcripts to Anthropic, as Web Store policy requires. */
+export type Settings = {
+  apiKey: string;
+  consent: boolean;
+  langs: string[];
+  maxAgeDays: number;
+  hidePromos: boolean;
+};
 
 /** What extension pages see of the settings: never the key itself. */
 export type SettingsView = {
   hasKey: boolean;
   keyHint: string;
+  consent: boolean;
   langs: string[];
   maxAgeDays: number;
   hidePromos: boolean;
 };
+
+/** Why nothing can be sent to Anthropic yet, or null when a summary can go ahead. */
+export function summaryBlocker({ apiKey, consent }: Pick<Settings, 'apiKey' | 'consent'>) {
+  if (!apiKey) return 'No API key. Add one in the extension options.';
+  if (!consent) return 'Agree to send transcripts to Anthropic in the extension options.';
+  return null;
+}
 
 export type Summary = {
   title: string;
@@ -65,14 +80,14 @@ export type SummaryResult =
 type Api = {
   'settings/get': { req: object; res: SettingsView };
   'settings/save': {
-    req: { apiKey?: string; langs: string[]; maxAgeDays: number };
+    req: { apiKey?: string; consent: boolean; langs: string[]; maxAgeDays: number };
     res: SettingsView;
   };
   'key/test': { req: { apiKey?: string }; res: Outcome };
   // From the options page in its own tab: hand the settings to a YouTube tab's drawer.
   'settings/drawer': { req: object; res: Outcome };
-  // Open to content scripts: says whether a key is saved, nothing more.
-  'key/status': { req: object; res: { hasKey: boolean } };
+  // Open to content scripts: says whether a key is saved and consent given, nothing more.
+  'key/status': { req: object; res: { ready: boolean } };
   // Saved on its own as the box is ticked, so open tabs apply it at once.
   'promos/save': { req: { hidePromos: boolean }; res: SettingsView };
   // Open to content scripts: the feed filters, which are not private.

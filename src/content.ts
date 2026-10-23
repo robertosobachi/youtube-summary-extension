@@ -265,8 +265,8 @@ send('summary/ids', {})
   .then(({ ids }) => ids.forEach(markSummarised))
   .catch(() => {});
 
-async function hasKey(): Promise<boolean> {
-  return (await send('key/status', {})).hasKey;
+async function ready(): Promise<boolean> {
+  return (await send('key/status', {})).ready;
 }
 
 // Once per page load: closing the settings keeps them closed until the next reload.
@@ -274,7 +274,7 @@ let keyPrompted = false;
 function promptForKey(): void {
   if (keyPrompted) return;
   keyPrompted = true;
-  hasKey()
+  ready()
     .then((ok) => {
       if (!ok) openSettings();
     })
@@ -310,9 +310,9 @@ async function summarise(id: string, fromTile = false): Promise<void> {
       return showSummary(id, cached, fromTile);
     }
 
-    const keySaved = await hasKey();
+    const canSend = await ready();
     if (stale()) return;
-    if (!keySaved) return openSettings();
+    if (!canSend) return openSettings();
 
     const { title, channel } = await videoMeta(id);
     panel.loading(`${title} (${channel})`, 'Fetching the transcript...');

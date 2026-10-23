@@ -17,6 +17,7 @@ import {
   PRIVILEGED,
   normaliseLangs,
   parseMaxAgeDays,
+  summaryBlocker,
 } from './messages';
 import { evictOldest } from './store';
 import { isVideoId } from './youtube';
@@ -44,6 +45,7 @@ async function getSettings(): Promise<Settings> {
   const { settings } = await chrome.storage.local.get('settings');
   return {
     apiKey: '',
+    consent: false,
     langs: DEFAULT_LANGS,
     maxAgeDays: DEFAULT_MAX_AGE_DAYS,
     hidePromos: DEFAULT_HIDE_PROMOS,
@@ -64,12 +66,14 @@ function serialised<T>(task: () => Promise<T>): Promise<T> {
   return run;
 }
 
-function view({ apiKey, langs, maxAgeDays, hidePromos }: Settings): SettingsView {
-  return { hasKey: Boolean(apiKey), keyHint: apiKey.slice(-4), langs, maxAgeDays, hidePromos };
+function view({ apiKey, consent, langs, maxAgeDays, hidePromos }: Settings): SettingsView {
+  const keyHint = apiKey.slice(-4);
+  return { hasKey: Boolean(apiKey), keyHint, consent, langs, maxAgeDays, hidePromos };
 }
 
 async function saveSettings(
   apiKey: string | undefined,
+  consent: unknown,
   langs: string[],
   maxAgeDays: unknown,
 ): Promise<SettingsView> {
@@ -78,6 +82,7 @@ async function saveSettings(
     const next = {
       ...current,
       apiKey: apiKey?.trim() || current.apiKey,
+      consent: consent === true,
       langs: normaliseLangs(langs),
       maxAgeDays: parseMaxAgeDays(maxAgeDays),
     };
@@ -174,8 +179,10 @@ async function createSummary(
   transcript: string,
   signal: AbortSignal,
 ): Promise<SummaryResult> {
-  const { apiKey, langs } = await getSettings();
-  if (!apiKey) return { ok: false, error: 'No API key. Add one in the extension options.' };
+  const settings = await getSettings();
+  const blocked = summaryBlocker(settings);
+  if (blocked) return { ok: false, error: blocked };
+  const { apiKey, langs } = settings;
   const result = finishSummary(
     await stream(apiKey, summaryRequest({ title, channel, langs, transcript }), signal),
   );
@@ -274,13 +281,13 @@ async function handle(msg: Message, sender: chrome.runtime.MessageSender): Promi
     case 'settings/get':
       return view(await getSettings());
     case 'settings/save':
-      return saveSettings(msg.apiKey, msg.langs, msg.maxAgeDays);
+      return saveSettings(msg.apiKey, msg.consent, msg.langs, msg.maxAgeDays);
     case 'key/test':
       return testKey(msg.apiKey);
     case 'settings/drawer':
       return openInDrawer(sender);
     case 'key/status':
-      return { hasKey: Boolean((await getSettings()).apiKey) };
+      return { ready: !summaryBlocker(await getSettings()) };
     case 'promos/save':
       return savePromos(msg.hidePromos);
     case 'filter/get': {
