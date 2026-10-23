@@ -13,7 +13,7 @@ import {
   watchUrl,
   watchVideoId,
 } from './youtube';
-import type { PageMessage, ReasonOutcome, Summary } from './messages';
+import type { PageMessage, ReasonOutcome, Summary, TabMessage } from './messages';
 import type { PanelAction } from './panel';
 import type { InnertubeConfig, VideoMeta } from './youtube';
 
@@ -197,6 +197,16 @@ function showSummary(id: string, entry: Summary, fromTile: boolean, note?: strin
 }
 
 const openSettings = (): void => panel.frame('Settings', chrome.runtime.getURL('options.html'));
+
+// The extension's Options entry, handed over by the service worker.
+chrome.runtime.onMessage.addListener((msg: TabMessage, sender, sendResponse) => {
+  if (sender.id !== chrome.runtime.id || msg.type !== 'settings/open') return false;
+  // Like the close button: a summary still on its way mustn't replace the settings.
+  cancel();
+  openSettings();
+  sendResponse({ ok: true });
+  return false;
+});
 
 async function hasKey(): Promise<boolean> {
   return (await send('key/status', {})).hasKey;

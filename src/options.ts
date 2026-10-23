@@ -1,8 +1,17 @@
 import { send } from './messages';
 import type { SettingsView } from './messages';
 
-// Framed in the YouTube drawer, which has its own heading.
+// Framed in the YouTube drawer, which has its own heading. In its own tab, it asks to move
+// there, and stays a page when no YouTube tab can take it.
 if (window.top !== window) document.documentElement.classList.add('embedded');
+else {
+  document.documentElement.classList.add('handing-off');
+  send('settings/drawer', {})
+    .then((result) => {
+      if (!result.ok) document.documentElement.classList.remove('handing-off');
+    })
+    .catch(() => document.documentElement.classList.remove('handing-off'));
+}
 
 const form = document.querySelector<HTMLFormElement>('#settings')!;
 const keyInput = document.querySelector<HTMLInputElement>('#api-key')!;

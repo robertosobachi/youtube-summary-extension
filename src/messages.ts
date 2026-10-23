@@ -26,6 +26,8 @@ type Api = {
   'settings/get': { req: object; res: SettingsView };
   'settings/save': { req: { apiKey?: string; langs: string }; res: SettingsView };
   'key/test': { req: { apiKey?: string }; res: Outcome };
+  // From the options page in its own tab: hand the settings to a YouTube tab's drawer.
+  'settings/drawer': { req: object; res: Outcome };
   // Open to content scripts: says whether a key is saved, nothing more.
   'key/status': { req: object; res: { hasKey: boolean } };
   'summary/get': { req: { id: string }; res: Summary | null };
@@ -42,7 +44,15 @@ export type Message = { [K in MessageType]: { type: K } & Api[K]['req'] }[Messag
 export type Reply<K extends MessageType> = Api[K]['res'];
 
 /** Settings and key messages are only accepted from the extension's own pages. */
-export const PRIVILEGED: readonly MessageType[] = ['settings/get', 'settings/save', 'key/test'];
+export const PRIVILEGED: readonly MessageType[] = [
+  'settings/get',
+  'settings/save',
+  'key/test',
+  'settings/drawer',
+];
+
+/** From the service worker to a content script. */
+export type TabMessage = { type: 'settings/open' };
 
 export function send<K extends MessageType>(type: K, req: Api[K]['req']): Promise<Reply<K>> {
   // A reloaded extension leaves the scripts already in open tabs without chrome.runtime.

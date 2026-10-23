@@ -10,6 +10,9 @@
     "128": "icons/icon-128.png"
   },
   "minimum_chrome_version": "120",
+  "action": {
+    "default_title": "YouTube Summary settings"
+  },
   "permissions": ["storage"],
   "host_permissions": ["https://www.youtube.com/*", "https://api.anthropic.com/*"],
   "background": {

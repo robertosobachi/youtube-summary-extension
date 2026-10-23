@@ -13,7 +13,15 @@ import {
 import { DEFAULT_LANGS, PRIVILEGED, parseLangs } from './messages';
 import { evictOldest } from './store';
 import { isVideoId } from './youtube';
-import type { Message, Outcome, Settings, SettingsView, Summary, SummaryResult } from './messages';
+import type {
+  Message,
+  Outcome,
+  Settings,
+  SettingsView,
+  Summary,
+  SummaryResult,
+  TabMessage,
+} from './messages';
 import type { StreamState } from './claude';
 import type { Rejected, Summaries } from './store';
 
@@ -172,7 +180,48 @@ function summarise(msg: Extract<Message, { type: 'summary/create' }>): Promise<S
   return call.run;
 }
 
-async function handle(msg: Message): Promise<unknown> {
+/**
+ * Opens the settings in the drawer of a YouTube tab, this window's first, and closes the
+ * options tab that asked. Fails when no YouTube tab has the content script listening.
+ */
+async function openInDrawer(sender: chrome.runtime.MessageSender): Promise<Outcome> {
+  const from = sender.tab;
+  // Only the options page in its own tab: never the copy framed in the drawer.
+  if (!from?.id || sender.frameId !== 0) return { ok: false, error: 'Not a tab.' };
+  const tabs = await chrome.tabs.query({ url: 'https://www.youtube.com/*' });
+  const inWindow = tabs.filter((t) => t.windowId === from.windowId);
+  const [tab] = (inWindow.length ? inWindow : tabs).sort(
+    (a, b) => (b.lastAccessed ?? 0) - (a.lastAccessed ?? 0),
+  );
+  if (!tab?.id) return { ok: false, error: 'No YouTube tab.' };
+  const shown = await showSettings(tab.id);
+  if (!shown.ok) return shown;
+  await chrome.tabs.update(tab.id, { active: true });
+  await chrome.windows.update(tab.windowId, { focused: true });
+  await chrome.tabs.remove(from.id);
+  return { ok: true };
+}
+
+/** Asks the content script in a YouTube tab to open the settings in its drawer. */
+async function showSettings(tabId: number): Promise<Outcome> {
+  try {
+    await chrome.tabs.sendMessage(tabId, { type: 'settings/open' } satisfies TabMessage);
+    return { ok: true };
+  } catch (err) {
+    // Loaded before the extension was: no content script to answer.
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+// The toolbar icon: straight into this tab's drawer, no options tab in between. Elsewhere,
+// the options page, which moves itself to a YouTube tab if there is one.
+chrome.action.onClicked.addListener(async (tab) => {
+  const onYouTube = tab.url?.startsWith('https://www.youtube.com/');
+  if (tab.id !== undefined && onYouTube && (await showSettings(tab.id)).ok) return;
+  chrome.runtime.openOptionsPage();
+});
+
+async function handle(msg: Message, sender: chrome.runtime.MessageSender): Promise<unknown> {
   switch (msg.type) {
     case 'settings/get':
       return view(await getSettings());
@@ -180,6 +229,8 @@ async function handle(msg: Message): Promise<unknown> {
       return saveSettings(msg.apiKey, msg.langs);
     case 'key/test':
       return testKey(msg.apiKey);
+    case 'settings/drawer':
+      return openInDrawer(sender);
     case 'key/status':
       return { hasKey: Boolean((await getSettings()).apiKey) };
     case 'summary/get':
@@ -206,7 +257,7 @@ chrome.runtime.onMessage.addListener((msg: Message, sender, sendResponse) => {
     sendResponse({ ok: false, error: 'Not allowed from this context.' });
     return false;
   }
-  handle(msg).then(sendResponse, (err: unknown) =>
+  handle(msg, sender).then(sendResponse, (err: unknown) =>
     sendResponse({ ok: false, error: err instanceof Error ? err.message : String(err) }),
   );
   return true;
