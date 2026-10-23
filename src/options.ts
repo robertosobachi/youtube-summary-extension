@@ -1,4 +1,4 @@
-import { LANGS, send } from './messages';
+import { LANGS, MAX_AGE_OPTIONS, send } from './messages';
 import type { SettingsView } from './messages';
 
 // Framed in the YouTube drawer, which has its own heading. In its own tab, it asks to move
@@ -13,9 +13,14 @@ else {
     .catch(() => document.documentElement.classList.remove('handing-off'));
 }
 
+// In the YouTube drawer: YouTube's theme, not the system's.
+const theme = new URLSearchParams(location.search).get('theme');
+if (theme === 'dark' || theme === 'light') document.documentElement.dataset.theme = theme;
+
 const form = document.querySelector<HTMLFormElement>('#settings')!;
 const keyInput = document.querySelector<HTMLInputElement>('#api-key')!;
 const langsList = document.querySelector<HTMLDivElement>('#langs .list')!;
+const maxAgeSelect = document.querySelector<HTMLSelectElement>('#max-age')!;
 const testButton = document.querySelector<HTMLButtonElement>('#test')!;
 const status = document.querySelector<HTMLOutputElement>('#status')!;
 
@@ -23,7 +28,14 @@ function show(settings: SettingsView): void {
   keyInput.value = '';
   keyInput.placeholder = settings.hasKey ? `Saved key ending in ${settings.keyHint}` : 'sk-ant-...';
   showLangs(settings.langs);
+  maxAgeSelect.value = String(settings.maxAgeDays);
+  savedMaxAge = settings.maxAgeDays;
 }
+
+// To say when a reload is needed: the cut-off only reaches responses loaded after saving.
+let savedMaxAge: number | null = null;
+
+for (const { label, days } of MAX_AGE_OPTIONS) maxAgeSelect.add(new Option(label, String(days)));
 
 const langName = new Intl.DisplayNames(['en'], { type: 'language', fallback: 'code' });
 
@@ -65,8 +77,10 @@ function report(text: string, ok: boolean): void {
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
-  show(await send('settings/save', { apiKey: keyInput.value, langs: checkedLangs() }));
-  report('Saved.', true);
+  const maxAgeDays = Number(maxAgeSelect.value);
+  const ageChanged = maxAgeDays !== savedMaxAge;
+  show(await send('settings/save', { apiKey: keyInput.value, langs: checkedLangs(), maxAgeDays }));
+  report(ageChanged ? 'Saved. Reload YouTube to refilter videos already shown.' : 'Saved.', true);
 });
 
 testButton.addEventListener('click', async () => {

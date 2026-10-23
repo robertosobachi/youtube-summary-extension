@@ -1,7 +1,7 @@
 // ISOLATED world: buttons, the drawer and youtube.com fetches. Claude calls and storage go
 // through the service worker; page data comes from page.ts by postMessage.
 import { chatText } from './chat';
-import { CONTENT_SOURCE, PAGE_SOURCE, isFrom, post, send } from './messages';
+import { AGE_KEY, CONTENT_SOURCE, PAGE_SOURCE, isFrom, post, send } from './messages';
 import { createPanel } from './panel';
 import {
   SELECTORS,
@@ -196,17 +196,43 @@ function showSummary(id: string, entry: Summary, fromTile: boolean, note?: strin
   panel.show({ id, title: entry.title, channel: entry.channel }, entry.summary, actions, note);
 }
 
-const openSettings = (): void => panel.frame('Settings', chrome.runtime.getURL('options.html'));
+// The frame can't see YouTube's theme, which needn't match the system's, so it's passed along.
+const openSettings = (): void => {
+  const theme = document.documentElement.hasAttribute('dark') ? 'dark' : 'light';
+  panel.frame('Settings', chrome.runtime.getURL(`options.html?theme=${theme}`));
+};
 
-// The extension's Options entry, handed over by the service worker.
+// The extension's Options entry and saved age cut-offs, handed over by the service worker.
 chrome.runtime.onMessage.addListener((msg: TabMessage, sender, sendResponse) => {
-  if (sender.id !== chrome.runtime.id || msg.type !== 'settings/open') return false;
-  // Like the close button: a summary still on its way mustn't replace the settings.
-  cancel();
-  openSettings();
+  if (sender.id !== chrome.runtime.id) return false;
+  if (msg.type === 'filter/set') {
+    mirrorFilter(msg.maxAgeDays);
+  } else if (msg.type === 'settings/open') {
+    // Like the close button: a summary still on its way mustn't replace the settings.
+    cancel();
+    openSettings();
+  } else {
+    return false;
+  }
   sendResponse({ ok: true });
   return false;
 });
+
+/**
+ * page.ts can't reach the service worker and needs the cut-off before the first response,
+ * so it reads this page's localStorage. A change reaches the next page load at the latest.
+ */
+function mirrorFilter(maxAgeDays: number): void {
+  try {
+    localStorage.setItem(AGE_KEY, String(maxAgeDays));
+  } catch {
+    // Storage blocked: page.ts keeps the last value it can read, or the default.
+  }
+}
+
+send('filter/get', {})
+  .then(({ maxAgeDays }) => mirrorFilter(maxAgeDays))
+  .catch(() => {});
 
 async function hasKey(): Promise<boolean> {
   return (await send('key/status', {})).hasKey;
@@ -416,7 +442,7 @@ const hostIds = new WeakMap<HTMLElement, string>();
 const watchedHosts = new WeakMap<Element, { host: HTMLElement; id: string }>();
 
 function placeTileButtons(): void {
-  for (const tile of document.querySelectorAll(SELECTORS.homeTile)) {
+  for (const tile of document.querySelectorAll(SELECTORS.feedTile)) {
     const link = tile.querySelector<HTMLAnchorElement>(SELECTORS.tileLink);
     const id = link ? watchVideoId(link.href) : null;
     let host = tileHosts.get(tile);

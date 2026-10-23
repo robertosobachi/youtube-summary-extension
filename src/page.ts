@@ -1,8 +1,9 @@
 // MAIN world, document_start. Reads YouTube's own page data and passes the public parts to
 // content.ts with postMessage. Never sees the API key or storage. Its only writes are
-// YouTube's own Not interested command and, for Watched, the "I've already watched" reason
-// YouTube offers after it, both dispatched through YouTube's own router.
-import { CONTENT_SOURCE, PAGE_SOURCE, isFrom, post } from './messages';
+// removing videos older than the age cut-off from Home responses before YouTube renders
+// them, YouTube's own Not interested command and, for Watched, the "I've already watched"
+// reason YouTube offers after it, both dispatched through YouTube's own router.
+import { AGE_KEY, CONTENT_SOURCE, PAGE_SOURCE, isFrom, parseMaxAgeDays, post } from './messages';
 import {
   BROWSE_PATH,
   FEEDBACK_PATH,
@@ -11,6 +12,7 @@ import {
   homeTiles,
   isHomeResponse,
   navResponse,
+  removeOldVideos,
   sentFeedbackTokens,
   watchVideo,
   watchedReasonToken,
@@ -37,6 +39,21 @@ function innertubeConfig(): InnertubeConfig | null {
   return { context, clientName: String(clientName), clientVersion };
 }
 
+/** Read on every response, so a cut-off saved meanwhile applies to the next continuation. */
+function maxAgeDays(): number {
+  try {
+    return parseMaxAgeDays(localStorage.getItem(AGE_KEY));
+  } catch {
+    return parseMaxAgeDays(null);
+  }
+}
+
+/** Removes old videos from a Home response in place. True when anything went. */
+function filterHome(data: unknown): boolean {
+  const days = maxAgeDays();
+  return days > 0 && isHomeResponse(data) && removeOldVideos(data, days).removed > 0;
+}
+
 /** Reads the tiles of a Home response and posts them as one batch. */
 function walk(data: unknown): void {
   if (!isHomeResponse(data)) return;
@@ -58,6 +75,11 @@ function trapInitialData(): void {
       enumerable: true,
       get: () => (previous?.get ? previous.get.call(window) : value),
       set: (next: unknown) => {
+        try {
+          filterHome(next);
+        } catch {
+          // A filter that fails leaves the page data as YouTube sent it.
+        }
         if (previous?.set) previous.set.call(window, next);
         else value = next;
         try {
@@ -80,9 +102,29 @@ function sentTokens(input: RequestInfo | URL, init?: RequestInit): Promise<strin
   );
 }
 
+/** A browse response with old Home videos removed, or the original if none were. */
+async function filteredBrowse(res: Response): Promise<Response> {
+  if (!res.ok) return res;
+  try {
+    const data: unknown = await res.clone().json();
+    const changed = filterHome(data);
+    walk(data);
+    if (!changed) return res;
+    const rewritten = new Response(JSON.stringify(data), {
+      status: res.status,
+      statusText: res.statusText,
+      headers: res.headers,
+    });
+    Object.defineProperty(rewritten, 'url', { value: res.url });
+    return rewritten;
+  } catch {
+    return res;
+  }
+}
+
 /**
- * Continuations and SPA navigation: read /youtubei/v1/browse responses from a clone. While
- * Watched waits, also hand it the response to its Not interested request.
+ * Continuations and SPA navigation: filter /youtubei/v1/browse responses and read their
+ * tiles. While Watched waits, also hand it the response to its Not interested request.
  */
 function tapFetch(): void {
   const original = window.fetch;
@@ -95,9 +137,8 @@ function tapFetch(): void {
     }
     const tokens = path === FEEDBACK_PATH && feedbackWaiters.size ? sentTokens(input, init) : null;
     const pending = original.call(this, input, init);
-    if (path === BROWSE_PATH) {
-      pending.then((res) => (res.ok ? res.clone().json().then(walk) : undefined)).catch(() => {});
-    } else if (tokens) {
+    if (path === BROWSE_PATH) return pending.then(filteredBrowse);
+    if (tokens) {
       Promise.all([tokens, pending])
         .then(async ([sent, res]) => {
           const waiters = sent.flatMap((token) => feedbackWaiters.get(token) ?? []);

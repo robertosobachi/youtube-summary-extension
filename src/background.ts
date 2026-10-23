@@ -10,7 +10,13 @@ import {
   summaryRequest,
   takeEvents,
 } from './claude';
-import { DEFAULT_LANGS, PRIVILEGED, normaliseLangs } from './messages';
+import {
+  DEFAULT_LANGS,
+  DEFAULT_MAX_AGE_DAYS,
+  PRIVILEGED,
+  normaliseLangs,
+  parseMaxAgeDays,
+} from './messages';
 import { evictOldest } from './store';
 import { isVideoId } from './youtube';
 import type {
@@ -35,7 +41,12 @@ const KEEP_ALIVE_MS = 20_000;
 
 async function getSettings(): Promise<Settings> {
   const { settings } = await chrome.storage.local.get('settings');
-  return { apiKey: '', langs: DEFAULT_LANGS, ...(settings as Partial<Settings> | undefined) };
+  return {
+    apiKey: '',
+    langs: DEFAULT_LANGS,
+    maxAgeDays: DEFAULT_MAX_AGE_DAYS,
+    ...(settings as Partial<Settings> | undefined),
+  };
 }
 
 async function getSummaries(): Promise<Summaries> {
@@ -51,17 +62,37 @@ function serialised<T>(task: () => Promise<T>): Promise<T> {
   return run;
 }
 
-function view({ apiKey, langs }: Settings): SettingsView {
-  return { hasKey: Boolean(apiKey), keyHint: apiKey.slice(-4), langs };
+function view({ apiKey, langs, maxAgeDays }: Settings): SettingsView {
+  return { hasKey: Boolean(apiKey), keyHint: apiKey.slice(-4), langs, maxAgeDays };
 }
 
-function saveSettings(apiKey: string | undefined, langs: string[]): Promise<SettingsView> {
-  return serialised(async () => {
+async function saveSettings(
+  apiKey: string | undefined,
+  langs: string[],
+  maxAgeDays: unknown,
+): Promise<SettingsView> {
+  const saved = await serialised(async () => {
     const current = await getSettings();
-    const next = { apiKey: apiKey?.trim() || current.apiKey, langs: normaliseLangs(langs) };
+    const next = {
+      apiKey: apiKey?.trim() || current.apiKey,
+      langs: normaliseLangs(langs),
+      maxAgeDays: parseMaxAgeDays(maxAgeDays),
+    };
     await chrome.storage.local.set({ settings: next });
-    return view(next);
+    return next;
   });
+  await broadcastFilter(saved.maxAgeDays);
+  return view(saved);
+}
+
+/** Hands the age cut-off to every open YouTube tab, for the responses it loads next. */
+async function broadcastFilter(maxAgeDays: number): Promise<void> {
+  const tabs = await chrome.tabs.query({ url: 'https://www.youtube.com/*' });
+  const msg: TabMessage = { type: 'filter/set', maxAgeDays };
+  // A tab loaded before the extension has no content script to answer.
+  await Promise.all(
+    tabs.map((tab) => (tab.id ? chrome.tabs.sendMessage(tab.id, msg).catch(() => {}) : null)),
+  );
 }
 
 /** GET on the summary model: checks the key without billing any tokens. */
@@ -226,13 +257,15 @@ async function handle(msg: Message, sender: chrome.runtime.MessageSender): Promi
     case 'settings/get':
       return view(await getSettings());
     case 'settings/save':
-      return saveSettings(msg.apiKey, msg.langs);
+      return saveSettings(msg.apiKey, msg.langs, msg.maxAgeDays);
     case 'key/test':
       return testKey(msg.apiKey);
     case 'settings/drawer':
       return openInDrawer(sender);
     case 'key/status':
       return { hasKey: Boolean((await getSettings()).apiKey) };
+    case 'filter/get':
+      return { maxAgeDays: (await getSettings()).maxAgeDays };
     case 'summary/get':
       return isVideoId(msg.id) ? ((await getSummaries())[msg.id] ?? null) : null;
     case 'summary/create':

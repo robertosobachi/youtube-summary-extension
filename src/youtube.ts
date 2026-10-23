@@ -16,8 +16,12 @@ export const SELECTORS = {
     'ytd-watch-metadata #actions',
     'ytd-watch-metadata #top-row',
   ],
-  /** Home feed tiles. YouTube keeps the Home page element alive, hidden, on other pages. */
-  homeTile: 'ytd-browse[page-subtype="home"] ytd-rich-item-renderer',
+  /**
+   * Home and Subscriptions feed tiles. YouTube keeps both page elements alive, hidden, on
+   * other pages.
+   */
+  feedTile:
+    'ytd-browse:is([page-subtype="home"], [page-subtype="subscriptions"]) ytd-rich-item-renderer',
   /** The tile's own video link; Shorts tiles link to /shorts/ and never match. */
   tileLink: 'a[href*="/watch?v="]',
   /**
@@ -271,6 +275,90 @@ export function homeTiles(data: unknown): HomeTile[] {
   };
   walk(data);
   return tiles;
+}
+
+const UNIT_DAYS: Record<string, number> = {
+  second: 1 / 86400,
+  sec: 1 / 86400,
+  minute: 1 / 1440,
+  min: 1 / 1440,
+  hour: 1 / 24,
+  hr: 1 / 24,
+  day: 1,
+  week: 7,
+  wk: 7,
+  month: 30,
+  mo: 30,
+  year: 365,
+  yr: 365,
+};
+
+// English only. Accepts a leading word such as "Streamed" or "Premiered".
+const RELATIVE_DATE =
+  /(?:^|\s)(\d+)\s+(second|sec|minute|min|hour|hr|day|week|wk|month|mo|year|yr)s?\s+ago$/;
+
+/** Days since a relative date such as "3 weeks ago" or "4 hr ago", or null if it isn't one. */
+export function parseAgeDays(text: string): number | null {
+  const match = RELATIVE_DATE.exec(text.trim());
+  if (!match) return null;
+  return Number(match[1]) * UNIT_DAYS[match[2]];
+}
+
+/**
+ * The age in days of a video `lockupViewModel`, or null when no metadata part reads as a
+ * date. The visible text is abbreviated ("4 hr ago"), so the accessibility label goes first.
+ */
+export function videoAgeDays(lockup: unknown): number | null {
+  const rows = at(lockup, METADATA_ROWS);
+  const parts: unknown[] = Array.isArray(rows)
+    ? rows.flatMap((row) => at(row, ['metadataParts']) ?? [])
+    : [];
+  for (const part of parts) {
+    for (const text of [at(part, ['accessibilityLabel']), at(part, ['text', 'content'])]) {
+      const days = typeof text === 'string' ? parseAgeDays(text) : null;
+      if (days !== null) return days;
+    }
+  }
+  return null;
+}
+
+// Path from a feed array element to its video.
+const FEED_LOCKUP = ['richItemRenderer', 'content', 'lockupViewModel'];
+
+/**
+ * Removes, in place, every feed video older than `maxDays`. Only video lockups with a
+ * readable date go: ads, Shorts, shelves, live streams and the continuation item stay.
+ */
+export function removeOldVideos(
+  data: unknown,
+  maxDays: number,
+): { removed: number; total: number } {
+  let removed = 0;
+  let total = 0;
+  const walk = (node: unknown): void => {
+    if (Array.isArray(node)) {
+      let write = 0;
+      for (const element of node) {
+        const lockup = at(element, FEED_LOCKUP);
+        if (isObject(lockup) && lockup.contentType === VIDEO_LOCKUP) {
+          total++;
+          const age = videoAgeDays(lockup);
+          if (age !== null && age > maxDays) {
+            removed++;
+            continue;
+          }
+        } else {
+          walk(element);
+        }
+        node[write++] = element;
+      }
+      node.length = write;
+    } else if (isObject(node)) {
+      Object.values(node).forEach(walk);
+    }
+  };
+  walk(data);
+  return { removed, total };
 }
 
 /** Same-origin oEmbed, as the CLI uses for titles: no auth, public data only. */

@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { errorMessage } from '../src/claude';
-import { normaliseLangs } from '../src/messages';
+import {
+  DEFAULT_MAX_AGE_DAYS,
+  MAX_AGE_OPTIONS,
+  normaliseLangs,
+  parseMaxAgeDays,
+} from '../src/messages';
 
 describe('normaliseLangs', () => {
   it('lower-cases and dedupes codes', () => {
@@ -9,6 +14,29 @@ describe('normaliseLangs', () => {
 
   it('defaults to en when empty', () => {
     expect(normaliseLangs([' ', ''])).toEqual(['en']);
+  });
+});
+
+describe('parseMaxAgeDays', () => {
+  it('defaults to off', () => {
+    expect(DEFAULT_MAX_AGE_DAYS).toBe(0);
+  });
+
+  it.each([undefined, null, '', 'abc', -5, NaN, '1e999'])('falls back to default for %j', (raw) => {
+    expect(parseMaxAgeDays(raw)).toBe(DEFAULT_MAX_AGE_DAYS);
+  });
+
+  it.each([
+    [30, 30],
+    ['365', 365],
+    [0, 0],
+    ['0', 0],
+  ])('reads %j as %j', (raw, days) => {
+    expect(parseMaxAgeDays(raw)).toBe(days);
+  });
+
+  it('offers the default', () => {
+    expect(MAX_AGE_OPTIONS.map((o) => o.days)).toContain(DEFAULT_MAX_AGE_DAYS);
   });
 });
 

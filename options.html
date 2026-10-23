@@ -13,8 +13,20 @@
         --ok: #1e7e34;
         --error: #c5221f;
       }
+      :root[data-theme='light'] {
+        color-scheme: light;
+      }
+      :root[data-theme='dark'] {
+        color-scheme: dark;
+        --bg: #0f0f0f;
+        --fg: #f1f1f1;
+        --muted: #aaa;
+        --border: #3f3f3f;
+        --ok: #81c995;
+        --error: #f28b82;
+      }
       @media (prefers-color-scheme: dark) {
-        :root {
+        :root:not([data-theme]) {
           --bg: #0f0f0f;
           --fg: #f1f1f1;
           --muted: #aaa;
@@ -73,7 +85,8 @@
         margin: 0;
         font-weight: normal;
       }
-      input:not([type='checkbox']) {
+      input:not([type='checkbox']),
+      select {
         box-sizing: border-box;
         width: 100%;
         margin-top: 6px;
@@ -136,6 +149,13 @@
         </fieldset>
         <p class="hint">
           A transcript in one of these is summarised in its own language, any other in English.
+        </p>
+
+        <label for="max-age">Hide Home videos older than</label>
+        <select id="max-age"></select>
+        <p class="hint">
+          YouTube rounds dates, so "1 year ago" can mean up to 23 months. Applies to videos loaded
+          after saving: reload YouTube for the ones already shown.
         </p>
 
         <div class="actions">

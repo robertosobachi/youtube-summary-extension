@@ -10,10 +10,38 @@ export const LANGS = (
   'sk sr sv th tr uk ur vi zh-hans zh-hant'
 ).split(' ');
 
-export type Settings = { apiKey: string; langs: string[] };
+/** 0 means off. Steps follow YouTube's rounded dates, so finer values would behave the same. */
+export const MAX_AGE_OPTIONS: { label: string; days: number }[] = [
+  { label: 'Off', days: 0 },
+  { label: '1 week', days: 7 },
+  { label: '1 month', days: 30 },
+  { label: '3 months', days: 90 },
+  { label: '6 months', days: 180 },
+  { label: '1 year', days: 365 },
+  { label: '2 years', days: 730 },
+];
+
+export const DEFAULT_MAX_AGE_DAYS = 0;
+
+/** youtube.com localStorage key: content.ts mirrors the cut-off there for page.ts to read. */
+export const AGE_KEY = 'yts:maxAgeDays';
+
+/** A cut-off in whole days, 0 for off. Anything unreadable is the default. */
+export function parseMaxAgeDays(raw: unknown): number {
+  if (raw === '' || raw === null || raw === undefined) return DEFAULT_MAX_AGE_DAYS;
+  const days = Number(raw);
+  return Number.isFinite(days) && days >= 0 ? days : DEFAULT_MAX_AGE_DAYS;
+}
+
+export type Settings = { apiKey: string; langs: string[]; maxAgeDays: number };
 
 /** What extension pages see of the settings: never the key itself. */
-export type SettingsView = { hasKey: boolean; keyHint: string; langs: string[] };
+export type SettingsView = {
+  hasKey: boolean;
+  keyHint: string;
+  langs: string[];
+  maxAgeDays: number;
+};
 
 export type Summary = {
   title: string;
@@ -30,12 +58,17 @@ export type SummaryResult =
 
 type Api = {
   'settings/get': { req: object; res: SettingsView };
-  'settings/save': { req: { apiKey?: string; langs: string[] }; res: SettingsView };
+  'settings/save': {
+    req: { apiKey?: string; langs: string[]; maxAgeDays: number };
+    res: SettingsView;
+  };
   'key/test': { req: { apiKey?: string }; res: Outcome };
   // From the options page in its own tab: hand the settings to a YouTube tab's drawer.
   'settings/drawer': { req: object; res: Outcome };
   // Open to content scripts: says whether a key is saved, nothing more.
   'key/status': { req: object; res: { hasKey: boolean } };
+  // Open to content scripts: the Home age cut-off, which is not private.
+  'filter/get': { req: object; res: { maxAgeDays: number } };
   'summary/get': { req: { id: string }; res: Summary | null };
   'summary/create': {
     req: { id: string; title: string; channel: string; transcript: string };
@@ -58,7 +91,7 @@ export const PRIVILEGED: readonly MessageType[] = [
 ];
 
 /** From the service worker to a content script. */
-export type TabMessage = { type: 'settings/open' };
+export type TabMessage = { type: 'settings/open' } | { type: 'filter/set'; maxAgeDays: number };
 
 export function send<K extends MessageType>(type: K, req: Api[K]['req']): Promise<Reply<K>> {
   // A reloaded extension leaves the scripts already in open tabs without chrome.runtime.
