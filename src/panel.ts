@@ -15,8 +15,23 @@ const CSS = `
   z-index: 2100;
   width: min(var(--yts-width, 420px), 100vw);
   --accent: #c15f3c;
+  /* Fallbacks for YouTube's own colours, which don't always reach the drawer. */
+  --bg: #fff;
+  --fg: #0f0f0f;
+  --muted: #606060;
+  --layer: rgba(0, 0, 0, 0.1);
+  --chip: rgba(0, 0, 0, 0.05);
+  --chip-hover: rgba(0, 0, 0, 0.1);
 }
-:host-context(html[dark]) { --accent: #e08a6d; }
+:host-context(html[dark]) {
+  --accent: #e08a6d;
+  --bg: #0f0f0f;
+  --fg: #f1f1f1;
+  --muted: #aaa;
+  --layer: rgba(255, 255, 255, 0.2);
+  --chip: rgba(255, 255, 255, 0.1);
+  --chip-hover: rgba(255, 255, 255, 0.2);
+}
 /* Drag the left edge to resize. */
 .resize {
   position: absolute;
@@ -47,9 +62,9 @@ const CSS = `
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--yt-spec-base-background, #fff);
-  color: var(--yt-spec-text-primary, #0f0f0f);
-  border-left: 1px solid var(--yt-spec-10-percent-layer, rgba(0, 0, 0, 0.1));
+  background: var(--yt-spec-base-background, var(--bg));
+  color: var(--yt-spec-text-primary, var(--fg));
+  border-left: 1px solid var(--yt-spec-10-percent-layer, var(--layer));
   box-shadow: -4px 0 16px rgba(0, 0, 0, 0.15);
   font: 14px/1.5 Roboto, Arial, sans-serif;
 }
@@ -64,11 +79,11 @@ header {
   margin: 0;
   font-size: 14px;
   font-weight: 500;
-  color: var(--yt-spec-text-secondary, #606060);
+  color: var(--yt-spec-text-secondary, var(--muted));
   overflow-wrap: anywhere;
 }
 .channel { display: block; font-size: 12px; font-weight: 400; }
-.title a { color: var(--yt-spec-text-primary, #0f0f0f); font-size: 15px; text-decoration: none; }
+.title a { color: var(--yt-spec-text-primary, var(--fg)); font-size: 15px; text-decoration: none; }
 .title a:hover { text-decoration: underline; }
 .body {
   flex: 1;
@@ -100,14 +115,14 @@ section:last-of-type:not(:first-of-type) {
   background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 section:last-of-type:not(:first-of-type) h3 { margin-top: 0; }
-.status { color: var(--yt-spec-text-secondary, #606060); }
+.status { color: var(--yt-spec-text-secondary, var(--muted)); }
 .error { color: var(--yt-spec-brand-button-background, #c00); white-space: pre-wrap; overflow-wrap: anywhere; }
 footer {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   padding: 12px 16px;
-  border-top: 1px solid var(--yt-spec-10-percent-layer, rgba(0, 0, 0, 0.1));
+  border-top: 1px solid var(--yt-spec-10-percent-layer, var(--layer));
 }
 footer:empty { display: none; }
 button {
@@ -115,16 +130,16 @@ button {
   height: 36px;
   border: 0;
   border-radius: 18px;
-  background: var(--yt-spec-badge-chip-background, rgba(0, 0, 0, 0.05));
+  background: var(--yt-spec-badge-chip-background, var(--chip));
   color: inherit;
   font: 500 14px Roboto, Arial, sans-serif;
   cursor: pointer;
 }
-button:hover { background: var(--yt-spec-button-chip-background-hover, rgba(0, 0, 0, 0.1)); }
+button:hover { background: var(--yt-spec-button-chip-background-hover, var(--chip-hover)); }
 button:disabled { opacity: 0.6; cursor: default; }
 footer button:first-child {
-  background: var(--yt-spec-text-primary, #0f0f0f);
-  color: var(--yt-spec-base-background, #fff);
+  background: var(--yt-spec-text-primary, var(--fg));
+  color: var(--yt-spec-base-background, var(--bg));
 }
 footer button:first-child:hover { opacity: 0.85; }
 .close { padding: 0; width: 36px; flex: none; background: transparent; font-size: 20px; }
