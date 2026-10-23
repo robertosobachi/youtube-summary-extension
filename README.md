@@ -1,6 +1,6 @@
-# YouTube Summary
+# Refeed for YouTube
 
-Summarise YouTube videos with Claude, from YouTube itself, and hide old videos from the Home feed.
+Triage your YouTube feed: summarise videos with Claude and hide the ones not worth watching.
 
 ## What it does
 
@@ -34,6 +34,7 @@ npm run build
 With no API key saved, the settings open in the drawer on YouTube: once when the page loads, and again whenever you click Summarise. On a YouTube tab, click the extension's toolbar icon to open the settings in its drawer. You can also open the extension's options (Details > Extension options on `chrome://extensions`, Options in the toolbar icon's menu, or the icon on any other tab): they move to the drawer of a YouTube tab, this window's first, and stay a full page when no YouTube tab is open. Fill in:
 
 - **Anthropic API key:** create one in the Claude Console at [platform.claude.com/settings/keys](https://platform.claude.com/settings/keys). Leave the field empty later to keep the saved key.
+- **Send transcripts to Anthropic:** under the key field, required to save a key. Untick it to stop summaries: Summarise then opens the settings and nothing goes to Anthropic.
 - **Summary languages:** tick one or more. Defaults to English.
 - **Hide Home videos older than:** 1 week to 2 years, or Off. Applies to videos loaded after saving; reload YouTube to refilter the ones already shown.
 - **Hide YouTube featured promos:** saved as soon as you tick or untick it, no Save needed.
@@ -51,6 +52,8 @@ Click Save. Test key checks the key against the API without generating a summary
 - In the YouTube drawer, the settings are the options page in a frame. It runs in the extension's own process, so YouTube's scripts can't read the key as you type it.
 
 **What goes to api.anthropic.com**
+
+Nothing is sent to Anthropic for summaries until you tick Send transcripts to Anthropic in the settings.
 
 - On Summarise, when no cached summary exists: the video title, channel name, language instruction and transcript, with your API key. Model: `claude-sonnet-5-5`. Usage is billed to your Anthropic account.
 - On Test key: a request for the model's details, authenticated with your key.
@@ -80,6 +83,7 @@ npm run lint          # ESLint
 npm run lint:fix      # ESLint with autofix
 npm run format        # Prettier, write
 npm run format:check  # Prettier, check only
+npm run package       # clean build, zipped to refeed-<version>.zip for the Chrome Web Store
 npm run icons         # re-render icons/*.png from the SVGs; only needed after editing them
 ```
 
@@ -118,7 +122,7 @@ Builds `fixtures/promo-initial.json` for the promo filter tests from a Home capt
 
 ## Disclaimer
 
-Unofficial. Not affiliated with or endorsed by YouTube, Google or Anthropic.
+Unofficial. Not affiliated with or endorsed by YouTube, Google or Anthropic. YouTube is a trademark of Google LLC.
 
 ## Licence
 

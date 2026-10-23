@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "esbuild src/page.ts src/content.ts src/background.ts src/options.ts --bundle --format=iife --target=chrome120 --outdir=dist && cp manifest.json options.html dist/ && cp -R icons dist/",
+    "package": "rm -rf dist && npm run build && cd dist && zip -qr ../refeed-$npm_package_version.zip .",
     "icons": "node scripts/icons.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
