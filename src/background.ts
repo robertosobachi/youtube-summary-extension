@@ -10,7 +10,7 @@ import {
   summaryRequest,
   takeEvents,
 } from './claude';
-import { DEFAULT_LANGS, PRIVILEGED, parseLangs } from './messages';
+import { DEFAULT_LANGS, PRIVILEGED, normaliseLangs } from './messages';
 import { evictOldest } from './store';
 import { isVideoId } from './youtube';
 import type {
@@ -55,10 +55,10 @@ function view({ apiKey, langs }: Settings): SettingsView {
   return { hasKey: Boolean(apiKey), keyHint: apiKey.slice(-4), langs };
 }
 
-function saveSettings(apiKey: string | undefined, langs: string): Promise<SettingsView> {
+function saveSettings(apiKey: string | undefined, langs: string[]): Promise<SettingsView> {
   return serialised(async () => {
     const current = await getSettings();
-    const next = { apiKey: apiKey?.trim() || current.apiKey, langs: parseLangs(langs) };
+    const next = { apiKey: apiKey?.trim() || current.apiKey, langs: normaliseLangs(langs) };
     await chrome.storage.local.set({ settings: next });
     return view(next);
   });

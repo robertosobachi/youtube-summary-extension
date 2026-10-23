@@ -4,6 +4,12 @@ import type { InnertubeConfig, VideoMeta } from './youtube';
 
 export const DEFAULT_LANGS = ['en'];
 
+/** Offered on the options page, as lower-case BCP 47 codes. */
+export const LANGS = (
+  'ar bg bn ca cs da de el en es fa fi fil fr he hi hr hu id it ja ko ms nb nl pl pt pt-br ro ru ' +
+  'sk sr sv th tr uk ur vi zh-hans zh-hant'
+).split(' ');
+
 export type Settings = { apiKey: string; langs: string[] };
 
 /** What extension pages see of the settings: never the key itself. */
@@ -24,7 +30,7 @@ export type SummaryResult =
 
 type Api = {
   'settings/get': { req: object; res: SettingsView };
-  'settings/save': { req: { apiKey?: string; langs: string }; res: SettingsView };
+  'settings/save': { req: { apiKey?: string; langs: string[] }; res: SettingsView };
   'key/test': { req: { apiKey?: string }; res: Outcome };
   // From the options page in its own tab: hand the settings to a YouTube tab's drawer.
   'settings/drawer': { req: object; res: Outcome };
@@ -62,12 +68,9 @@ export function send<K extends MessageType>(type: K, req: Api[K]['req']): Promis
   return chrome.runtime.sendMessage({ type, ...req });
 }
 
-/** "en, it" -> ['en', 'it']: lower-case codes, no duplicates, `en` when empty. */
-export function parseLangs(input: string): string[] {
-  const codes = input
-    .split(/[\s,]+/)
-    .map((code) => code.trim().toLowerCase())
-    .filter(Boolean);
+/** Lower-case codes, no duplicates, `en` when none. */
+export function normaliseLangs(input: string[]): string[] {
+  const codes = input.map((code) => code.trim().toLowerCase()).filter(Boolean);
   return codes.length ? [...new Set(codes)] : DEFAULT_LANGS;
 }
 

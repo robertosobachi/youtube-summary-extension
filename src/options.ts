@@ -1,4 +1,4 @@
-import { send } from './messages';
+import { LANGS, send } from './messages';
 import type { SettingsView } from './messages';
 
 // Framed in the YouTube drawer, which has its own heading. In its own tab, it asks to move
@@ -15,14 +15,47 @@ else {
 
 const form = document.querySelector<HTMLFormElement>('#settings')!;
 const keyInput = document.querySelector<HTMLInputElement>('#api-key')!;
-const langsInput = document.querySelector<HTMLInputElement>('#langs')!;
+const langsList = document.querySelector<HTMLDivElement>('#langs .list')!;
 const testButton = document.querySelector<HTMLButtonElement>('#test')!;
 const status = document.querySelector<HTMLOutputElement>('#status')!;
 
 function show(settings: SettingsView): void {
   keyInput.value = '';
   keyInput.placeholder = settings.hasKey ? `Saved key ending in ${settings.keyHint}` : 'sk-ant-...';
-  langsInput.value = settings.langs.join(', ');
+  showLangs(settings.langs);
+}
+
+const langName = new Intl.DisplayNames(['en'], { type: 'language', fallback: 'code' });
+
+/** One checkbox per offered language, plus any saved code the list no longer offers. */
+function showLangs(saved: string[]): void {
+  const codes = [...new Set([...LANGS, ...saved])];
+  const named = codes.map((code) => ({ code, name: nameOf(code) }));
+  named.sort((a, b) => a.name.localeCompare(b.name));
+  langsList.replaceChildren(
+    ...named.map(({ code, name }) => {
+      const box = document.createElement('input');
+      box.type = 'checkbox';
+      box.value = code;
+      box.checked = saved.includes(code);
+      const label = document.createElement('label');
+      label.append(box, name);
+      return label;
+    }),
+  );
+}
+
+// A malformed saved code would make DisplayNames throw.
+function nameOf(code: string): string {
+  try {
+    return langName.of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
+
+function checkedLangs(): string[] {
+  return [...langsList.querySelectorAll<HTMLInputElement>('input:checked')].map((box) => box.value);
 }
 
 function report(text: string, ok: boolean): void {
@@ -32,7 +65,7 @@ function report(text: string, ok: boolean): void {
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
-  show(await send('settings/save', { apiKey: keyInput.value, langs: langsInput.value }));
+  show(await send('settings/save', { apiKey: keyInput.value, langs: checkedLangs() }));
   report('Saved.', true);
 });
 

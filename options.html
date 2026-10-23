@@ -45,12 +45,35 @@
       .handing-off main {
         visibility: hidden;
       }
-      label {
+      label,
+      legend {
         display: block;
         margin-top: 20px;
         font-weight: 600;
       }
-      input {
+      fieldset {
+        margin: 0;
+        padding: 0;
+        border: 0;
+      }
+      #langs .list {
+        display: grid;
+        gap: 2px;
+        max-height: 200px;
+        overflow-y: auto;
+        margin-top: 6px;
+        padding: 8px 10px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+      }
+      #langs label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 0;
+        font-weight: normal;
+      }
+      input:not([type='checkbox']) {
         box-sizing: border-box;
         width: 100%;
         margin-top: 6px;
@@ -107,11 +130,12 @@
         <input id="api-key" type="password" autocomplete="off" spellcheck="false" />
         <p class="hint">Stored only in this browser. Leave empty to keep the saved key.</p>
 
-        <label for="langs">Summary languages</label>
-        <input id="langs" type="text" spellcheck="false" placeholder="en" />
+        <fieldset id="langs">
+          <legend>Summary languages</legend>
+          <div class="list"></div>
+        </fieldset>
         <p class="hint">
-          Language codes, e.g. <code>en, it</code>. A transcript in one of them is summarised in its
-          own language, any other in English.
+          A transcript in one of these is summarised in its own language, any other in English.
         </p>
 
         <div class="actions">

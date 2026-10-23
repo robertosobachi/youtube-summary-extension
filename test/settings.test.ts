@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { errorMessage } from '../src/claude';
-import { parseLangs } from '../src/messages';
+import { normaliseLangs } from '../src/messages';
 
-describe('parseLangs', () => {
-  it('splits, lower-cases and dedupes codes', () => {
-    expect(parseLangs(' EN, it  en,pt-BR')).toEqual(['en', 'it', 'pt-br']);
+describe('normaliseLangs', () => {
+  it('lower-cases and dedupes codes', () => {
+    expect(normaliseLangs([' EN', 'it', 'en', 'pt-BR'])).toEqual(['en', 'it', 'pt-br']);
   });
 
   it('defaults to en when empty', () => {
-    expect(parseLangs(' , ')).toEqual(['en']);
+    expect(normaliseLangs([' ', ''])).toEqual(['en']);
   });
 });
 

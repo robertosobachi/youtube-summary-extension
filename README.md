@@ -31,7 +31,7 @@ npm run build
 With no API key saved, the settings open in the drawer on YouTube: once when the page loads, and again whenever you click Summarise. On a YouTube tab, click the extension's toolbar icon to open the settings in its drawer. You can also open the extension's options (Details > Extension options on `chrome://extensions`, Options in the toolbar icon's menu, or the icon on any other tab): they move to the drawer of a YouTube tab, this window's first, and stay a full page when no YouTube tab is open. Fill in:
 
 - **Anthropic API key:** create one in the Claude Console at [platform.claude.com/settings/keys](https://platform.claude.com/settings/keys). Leave the field empty later to keep the saved key.
-- **Summary languages:** comma-separated language codes, for example `en, it`. Defaults to `en`.
+- **Summary languages:** tick one or more. Defaults to English.
 
 Click Save. Test key checks the key against the API without generating a summary.
 
