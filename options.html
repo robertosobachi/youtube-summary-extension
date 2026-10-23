@@ -57,16 +57,37 @@
       .handing-off main {
         visibility: hidden;
       }
+      section + section {
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid var(--border);
+      }
+      h2 {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
       label,
       legend {
         display: block;
         margin-top: 20px;
         font-weight: 600;
       }
+      h2 + label {
+        margin-top: 12px;
+      }
+      /* A legend's margin doesn't move its fieldset, so the gap goes on the fieldset. */
       fieldset {
-        margin: 0;
+        margin: 20px 0 0;
         padding: 0;
         border: 0;
+      }
+      legend {
+        margin-top: 0;
+        padding: 0;
       }
       #langs .list {
         display: grid;
@@ -90,9 +111,30 @@
         align-items: center;
         gap: 8px;
       }
-      /* Part of the key field above it. */
-      label.consent {
+      /* Part of the key field above it. Red until ticked, so it isn't missed. */
+      .consent {
         margin-top: 12px;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+      }
+      .consent label {
+        margin-top: 0;
+      }
+      .consent .required {
+        display: none;
+        margin-left: auto;
+        padding: 0 8px;
+        border: 1px solid var(--error);
+        border-radius: 10px;
+        color: var(--error);
+        font-size: 12px;
+      }
+      .consent:has(#consent:not(:checked)) {
+        border-color: var(--error);
+      }
+      .consent:has(#consent:not(:checked)) .required {
+        display: inline-block;
       }
       input:not([type='checkbox']),
       select {
@@ -148,44 +190,53 @@
     <main>
       <h1>Refeed for YouTube</h1>
       <form id="settings">
-        <label for="api-key">Anthropic API key</label>
-        <input id="api-key" type="password" autocomplete="off" spellcheck="false" />
-        <p class="hint">Stored only in this browser. Leave empty to keep the saved key.</p>
+        <section>
+          <h2>Summaries</h2>
+          <label for="api-key">Anthropic API key</label>
+          <input id="api-key" type="password" autocomplete="off" spellcheck="false" />
+          <p class="hint">Stored only in this browser. Leave empty to keep the saved key.</p>
 
-        <label class="toggle consent">
-          <input id="consent" type="checkbox" />
-          Send transcripts to Anthropic
-        </label>
-        <p class="hint">
-          Required to save a key. When you click Summarise, the video's title, channel and
-          transcript are sent with your key to Anthropic's Claude API (api.anthropic.com), and
-          billed to your Anthropic account.
-        </p>
+          <div class="consent">
+            <label class="toggle">
+              <input id="consent" type="checkbox" />
+              Send transcripts to Anthropic
+              <span class="required">Required</span>
+            </label>
+            <p class="hint">
+              Required to save a key. When you click Summarise, the video's title, channel and
+              transcript are sent with your key to Anthropic's Claude API (api.anthropic.com), and
+              billed to your Anthropic account.
+            </p>
+          </div>
 
-        <fieldset id="langs">
-          <legend>Summary languages</legend>
-          <div class="list"></div>
-        </fieldset>
-        <p class="hint">
-          A transcript in one of these is summarised in its own language, any other in English.
-        </p>
+          <fieldset id="langs">
+            <legend>Summary languages</legend>
+            <div class="list"></div>
+          </fieldset>
+          <p class="hint">
+            A transcript in one of these is summarised in its own language, any other in English.
+          </p>
+        </section>
 
-        <label for="max-age">Hide Home videos older than</label>
-        <select id="max-age"></select>
-        <p class="hint">
-          YouTube rounds dates, so "1 year ago" can mean up to 23 months. Applies to videos loaded
-          after saving: reload YouTube for the ones already shown.
-        </p>
+        <section>
+          <h2>Feed</h2>
+          <label for="max-age">Hide Home videos older than</label>
+          <select id="max-age"></select>
+          <p class="hint">
+            YouTube rounds dates, so "1 year ago" can mean up to 23 months. Applies to videos loaded
+            after saving: reload YouTube for the ones already shown.
+          </p>
 
-        <label class="toggle">
-          <input id="hide-promos" type="checkbox" />
-          Hide YouTube featured promos
-        </label>
-        <p class="hint">
-          Shelves such as "Get more from memberships" and Premium trailers. Saved and applied as
-          soon as you tick or untick it. After unticking, reload YouTube to bring back any already
-          filtered out.
-        </p>
+          <label class="toggle">
+            <input id="hide-promos" type="checkbox" />
+            Hide YouTube featured promos
+          </label>
+          <p class="hint">
+            Shelves such as "Get more from memberships" and Premium trailers. Saved and applied as
+            soon as you tick or untick it. After unticking, reload YouTube to bring back any already
+            filtered out.
+          </p>
+        </section>
 
         <div class="actions">
           <button type="submit">Save</button>
