@@ -354,10 +354,10 @@ function buttonHost(
   const root = host.attachShadow({ mode: 'closed' });
   const style = document.createElement('style');
   style.textContent = `
-    :host { all: initial; display: inline-flex; align-items: center; margin-right: 8px; }
+    :host { all: initial; display: inline-flex; align-items: center; align-self: center; margin: 0 8px 8px 0; }
     button {
       display: inline-flex; align-items: center; gap: 6px;
-      height: 36px; padding: 0 16px 0 12px; border: 0; border-radius: 18px; cursor: pointer;
+      height: 40px; padding: 0 16px 0 12px; border: 0; border-radius: 20px; cursor: pointer;
       background: var(--yt-spec-badge-chip-background, rgba(0, 0, 0, 0.05));
       color: var(--yt-spec-text-primary, #0f0f0f);
       font: 500 14px Roboto, Arial, sans-serif;
@@ -404,7 +404,9 @@ function placeWatchButton(): void {
     const id = watchVideoId(location.href);
     if (id) summarise(id);
   });
-  target.prepend(watchButton);
+  // Just before Like, as a sibling: inside #top-level-buttons-computed YouTube would wipe it.
+  const before = target.querySelector(':scope > #top-level-buttons-computed, :scope > #menu');
+  target.insertBefore(watchButton, before);
 }
 
 // Tiles are reused across SPA navigations, so each scan re-reads the tile's video id.

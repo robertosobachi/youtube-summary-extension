@@ -10,6 +10,8 @@ export const SELECTORS = {
   app: 'ytd-app',
   /** Where the watch page Summarise button goes, first match wins. */
   watchActions: [
+    // The flex row holding Like/Share; #actions-inner stacks #menu on its own line.
+    'ytd-watch-metadata #actions ytd-menu-renderer',
     'ytd-watch-metadata #actions-inner',
     'ytd-watch-metadata #actions',
     'ytd-watch-metadata #top-row',
