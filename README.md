@@ -11,6 +11,7 @@ Summarise YouTube videos with Claude, from YouTube itself.
 - **Cache:** summaries are saved locally, so opening the same video again doesn't call the API. When storage is full the oldest summaries are dropped.
 - **Copy for chat:** copies the title, link, summary and full transcript as a ready-made prompt to paste into any chat.
 - **Not interested:** in the drawer for a Home tile, sends YouTube's own Not interested command for that video and shows YouTube's response status. The video is also recorded locally.
+- **Watched:** a second button on each Home tile, below Summarise. One click sends Not interested, then YouTube's "I've already watched this video" reason, with no summary and no API call. The button shows the result: Done, or where the reason step stopped when only Not interested went through. The reason is matched by its English label, so with YouTube in another language only Not interested is sent.
 - **Cancel:** closing the drawer while a summary is in progress cancels it, and nothing is saved.
 
 ## Install
@@ -51,7 +52,7 @@ Click Save. Test key checks the key against the API without generating a summary
 **What goes to youtube.com**
 
 - The transcript request and, when a title isn't already known, an oEmbed lookup for title and channel. Both are same-origin requests from the YouTube page.
-- The Not interested command, sent through YouTube's own page code when you click Not interested.
+- The Not interested command, sent through YouTube's own page code when you click Not interested or Watched. For Watched, also the "I've already watched this video" reason from YouTube's response to it.
 
 The extension makes no other network requests.
 

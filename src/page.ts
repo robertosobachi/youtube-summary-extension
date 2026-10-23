@@ -1,17 +1,21 @@
 // MAIN world, document_start. Reads YouTube's own page data and passes the public parts to
-// content.ts with postMessage. Never sees the API key or storage. Its one write is
-// YouTube's own Not interested command, dispatched through YouTube's own router.
+// content.ts with postMessage. Never sees the API key or storage. Its only writes are
+// YouTube's own Not interested command and, for Watched, the "I've already watched" reason
+// YouTube offers after it, both dispatched through YouTube's own router.
 import { CONTENT_SOURCE, PAGE_SOURCE, isFrom, post } from './messages';
 import {
   BROWSE_PATH,
   FEEDBACK_PATH,
   SELECTORS,
+  commandFeedbackToken,
   homeTiles,
   isHomeResponse,
   navResponse,
+  sentFeedbackTokens,
   watchVideo,
+  watchedReasonToken,
 } from './youtube';
-import type { ContentMessage } from './messages';
+import type { ContentMessage, ReasonOutcome } from './messages';
 import type { InnertubeConfig } from './youtube';
 
 const NI_TIMEOUT_MS = 5000;
@@ -21,6 +25,8 @@ type Ytcfg = { get(key: string): unknown };
 // Not interested commands by video id. They stay in this world: content.ts only learns
 // that one exists.
 const commands = new Map<string, unknown>();
+// Watched waits for the Not interested response, keyed by the token its request sends.
+const feedbackWaiters = new Map<string, (data: unknown) => void>();
 
 function innertubeConfig(): InnertubeConfig | null {
   const ytcfg = (window as unknown as { ytcfg?: Ytcfg }).ytcfg;
@@ -66,21 +72,56 @@ function trapInitialData(): void {
   }
 }
 
-/** Continuations and SPA navigation: read /youtubei/v1/browse responses from a clone. */
+/** The feedback tokens a request sends. The Request is cloned now, before sending uses it up. */
+function sentTokens(input: RequestInfo | URL, init?: RequestInit): Promise<string[]> {
+  const body = input instanceof Request ? input.clone().text() : Promise.resolve(init?.body);
+  return body.then((text) =>
+    typeof text === 'string' ? sentFeedbackTokens(JSON.parse(text)) : [],
+  );
+}
+
+/**
+ * Continuations and SPA navigation: read /youtubei/v1/browse responses from a clone. While
+ * Watched waits, also hand it the response to its Not interested request.
+ */
 function tapFetch(): void {
   const original = window.fetch;
   window.fetch = function (this: unknown, input: RequestInfo | URL, init?: RequestInit) {
-    const pending = original.call(this, input, init);
+    let path = '';
     try {
-      const url = new URL(input instanceof Request ? input.url : String(input), location.href);
-      if (url.pathname === BROWSE_PATH) {
-        pending.then((res) => (res.ok ? res.clone().json().then(walk) : undefined)).catch(() => {});
-      }
+      path = new URL(input instanceof Request ? input.url : String(input), location.href).pathname;
     } catch {
-      // A URL we can't parse isn't a browse request.
+      // A URL we can't parse is neither a browse nor a feedback request.
+    }
+    const tokens = path === FEEDBACK_PATH && feedbackWaiters.size ? sentTokens(input, init) : null;
+    const pending = original.call(this, input, init);
+    if (path === BROWSE_PATH) {
+      pending.then((res) => (res.ok ? res.clone().json().then(walk) : undefined)).catch(() => {});
+    } else if (tokens) {
+      Promise.all([tokens, pending])
+        .then(async ([sent, res]) => {
+          const waiters = sent.flatMap((token) => feedbackWaiters.get(token) ?? []);
+          if (!waiters.length) return;
+          const data = res.ok ? await res.clone().json() : null;
+          waiters.forEach((resolve) => resolve(data));
+        })
+        .catch(() => {});
     }
     return pending;
   };
+}
+
+/** The JSON response to the feedback request that sends `token`, or null if none in time. */
+function feedbackResponse(token: string): Promise<unknown> {
+  return new Promise((resolve) => {
+    const done = (data: unknown) => {
+      if (!feedbackWaiters.delete(token)) return;
+      clearTimeout(timer);
+      resolve(data);
+    };
+    const timer = setTimeout(() => done(null), NI_TIMEOUT_MS);
+    feedbackWaiters.set(token, done);
+  });
 }
 
 /** The status of the first /youtubei/v1/feedback request YouTube makes from now on. */
@@ -103,15 +144,8 @@ function feedbackStatus(): Promise<number | null> {
   });
 }
 
-/** Sends the menu's own command through ytd-app's `yt-action` router. */
-async function notInterested(id: string): Promise<void> {
-  const command = commands.get(id);
-  const app = document.querySelector(SELECTORS.app);
-  if (!command || !app) {
-    post(PAGE_SOURCE, { type: 'ni-result', id, sent: false, status: null });
-    return;
-  }
-  const status = feedbackStatus();
+/** Sends a command through ytd-app's `yt-action` router, as YouTube's own menus do. */
+function dispatch(app: Element, command: unknown): void {
   app.dispatchEvent(
     new CustomEvent('yt-action', {
       bubbles: true,
@@ -124,7 +158,44 @@ async function notInterested(id: string): Promise<void> {
       },
     }),
   );
-  post(PAGE_SOURCE, { type: 'ni-result', id, sent: true, status: await status });
+}
+
+const accepted = (status: number | null): boolean =>
+  status !== null && status >= 200 && status < 300;
+
+/**
+ * Sends the menu's own Not interested command. With `watched`, then sends the "I've already
+ * watched" reason from its response, as Tell us why would.
+ */
+async function notInterested(id: string, watched = false): Promise<void> {
+  const command = commands.get(id);
+  const app = document.querySelector(SELECTORS.app);
+  if (!command || !app) {
+    post(PAGE_SOURCE, { type: 'ni-result', id, sent: false, status: null });
+    return;
+  }
+  const token = commandFeedbackToken(command);
+  const response = watched && token ? feedbackResponse(token) : null;
+  const status = feedbackStatus();
+  dispatch(app, command);
+  const niStatus = await status;
+  if (!watched) {
+    post(PAGE_SOURCE, { type: 'ni-result', id, sent: true, status: niStatus });
+    return;
+  }
+  const data = await response;
+  const reasonToken = watchedReasonToken(data);
+  let reason: ReasonOutcome = data === null ? 'unread' : 'missing';
+  if (reasonToken) {
+    const reasonStatus = feedbackStatus();
+    dispatch(app, {
+      commandMetadata: { webCommandMetadata: { sendPost: true } },
+      feedbackEndpoint: { feedbackToken: reasonToken },
+    });
+    const sentStatus = await reasonStatus;
+    reason = sentStatus === null ? 'unsent' : accepted(sentStatus) ? 'sent' : 'refused';
+  }
+  post(PAGE_SOURCE, { type: 'ni-result', id, sent: true, status: niStatus, reason });
 }
 
 trapInitialData();
@@ -136,7 +207,7 @@ window.addEventListener('message', (event) => {
   if (msg.type === 'cfg?') {
     post(PAGE_SOURCE, { type: 'cfg', nonce: msg.nonce, cfg: innertubeConfig() });
   } else if (msg.type === 'ni') {
-    notInterested(msg.id);
+    notInterested(msg.id, msg.watched);
   }
 });
 

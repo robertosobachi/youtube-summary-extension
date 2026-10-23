@@ -71,14 +71,30 @@ export const CONTENT_SOURCE = 'yts-content';
 /** A Home tile as content.ts sees it: `ni` says page.ts holds a Not interested command. */
 export type TileMeta = VideoMeta & { ni: boolean };
 
+/**
+ * How the already-watched reason went. `unread`: the Not interested response never reached
+ * page.ts. `missing`: it did, without the reason. `unsent`: no reason request seen in time.
+ */
+export type ReasonOutcome = 'sent' | 'unread' | 'missing' | 'unsent' | 'refused';
+
 export type PageMessage =
   | { type: 'cfg'; nonce: string; cfg: InnertubeConfig | null }
   | { type: 'nav'; pageType: string; video: VideoMeta | null }
   | { type: 'tiles'; tiles: TileMeta[] }
   // `sent: false`: nothing was dispatched. `status: null`: no feedback request seen in time.
-  | { type: 'ni-result'; id: string; sent: boolean; status: number | null };
+  // `reason`: Watched only.
+  | {
+      type: 'ni-result';
+      id: string;
+      sent: boolean;
+      status: number | null;
+      reason?: ReasonOutcome;
+    };
 
-export type ContentMessage = { type: 'cfg?'; nonce: string } | { type: 'ni'; id: string };
+export type ContentMessage =
+  | { type: 'cfg?'; nonce: string }
+  // `watched`: follow Not interested with the "I've already watched" reason.
+  | { type: 'ni'; id: string; watched?: boolean };
 
 export function isFrom<T>(event: MessageEvent, source: string): event is MessageEvent<T> {
   return (

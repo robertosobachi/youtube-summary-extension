@@ -17,6 +17,8 @@ const ALLOWED = new Set([
   'browse_id',
   'Not interested',
   "Don't recommend channel",
+  "I've already watched this video",
+  "I don't like the video",
 ]);
 const LABELS = { HIDE: 'Not interested', REMOVE: "Don't recommend channel" };
 const fakeId = (n) => `fakeVideo${String(n).padStart(2, '0')}`;
@@ -235,6 +237,31 @@ function sanitiseHomeBrowse(raw) {
   };
 }
 
+/** A Not interested /youtubei/v1/feedback response: the follow-up reasons, tokens faked. */
+function sanitiseFeedbackNi(raw) {
+  const { reasons } = raw.feedbackResponses[0].followUpDialog.dismissalFollowUpRenderer;
+  return {
+    feedbackResponses: [
+      {
+        followUpDialog: {
+          dismissalFollowUpRenderer: {
+            reasons: reasons.map((reason, i) => ({
+              dismissalReasonTextRenderer: {
+                text: {
+                  runs: reason.dismissalReasonTextRenderer.text.runs.map((run) => ({
+                    text: run.text,
+                  })),
+                },
+                feedbackToken: `reason-${i + 1}`,
+              },
+            })),
+          },
+        },
+      },
+    ],
+  };
+}
+
 /** Every string value in a JSON tree, with its path. Keys are not included. */
 function strings(node, path = '$', out = []) {
   if (typeof node === 'string') out.push([path, node]);
@@ -251,6 +278,7 @@ for (const [name, sanitise] of [
   ['transcript', sanitiseTranscript],
   ['home-initial', sanitiseHomeInitial],
   ['home-browse', sanitiseHomeBrowse],
+  ['feedback-ni', sanitiseFeedbackNi],
 ]) {
   const raw = JSON.parse(fs.readFileSync(`fixtures/raw/${name}.json`, 'utf8'));
   for (const [, value] of strings(raw)) if (value.length > 6) rawStrings.add(value);

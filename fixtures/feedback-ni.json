@@ -1,0 +1,36 @@
+{
+  "feedbackResponses": [
+    {
+      "followUpDialog": {
+        "dismissalFollowUpRenderer": {
+          "reasons": [
+            {
+              "dismissalReasonTextRenderer": {
+                "text": {
+                  "runs": [
+                    {
+                      "text": "I've already watched this video"
+                    }
+                  ]
+                },
+                "feedbackToken": "reason-1"
+              }
+            },
+            {
+              "dismissalReasonTextRenderer": {
+                "text": {
+                  "runs": [
+                    {
+                      "text": "I don't like the video"
+                    }
+                  ]
+                },
+                "feedbackToken": "reason-2"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -38,6 +38,9 @@ const NOT_INTERESTED_ICON = 'HIDE';
 const NOT_INTERESTED_LABEL = 'Not interested';
 // "Don't recommend channel": never ours to send.
 const NEVER_ICON = 'REMOVE';
+// Follow-up reasons have no icon, so only the English label matches: in another language
+// no reason is sent rather than the wrong one.
+const WATCHED_REASON = /already watched/i;
 
 export const TRANSCRIPT_PATH = '/youtubei/v1/get_panel?prettyPrint=false';
 const TRANSCRIPT_PANEL = 'PAmodern_transcript_view';
@@ -194,6 +197,35 @@ export function notInterestedCommand(lockup: unknown): unknown {
     );
   const command = at(item, ITEM_COMMAND);
   return isObject(command) && isObject(command.feedbackEndpoint) ? command : undefined;
+}
+
+/** The token a feedback command sends, which is how its request is recognised. */
+export function commandFeedbackToken(command: unknown): string | undefined {
+  const token = at(command, ['feedbackEndpoint', 'feedbackToken']);
+  return typeof token === 'string' ? token : undefined;
+}
+
+/** The tokens in a /youtubei/v1/feedback request body. */
+export function sentFeedbackTokens(body: unknown): string[] {
+  const tokens = at(body, ['feedbackTokens']);
+  return Array.isArray(tokens) ? tokens.filter((t): t is string => typeof t === 'string') : [];
+}
+
+// Inside a Not interested feedback response: the reasons "Tell us why" offers.
+const FOLLOW_UP_REASONS = ['followUpDialog', 'dismissalFollowUpRenderer', 'reasons'];
+const REASON = 'dismissalReasonTextRenderer';
+
+/** The "I've already watched this video" reason's token from a Not interested response. */
+export function watchedReasonToken(response: unknown): string | undefined {
+  const responses = at(response, ['feedbackResponses']);
+  if (!Array.isArray(responses)) return undefined;
+  for (const reason of responses.flatMap((r) => at(r, FOLLOW_UP_REASONS) ?? [])) {
+    const runs = at(reason, [REASON, 'text', 'runs']);
+    const label = Array.isArray(runs) ? runs.map((run) => at(run, ['text'])).join('') : '';
+    const token = at(reason, [REASON, 'feedbackToken']);
+    if (WATCHED_REASON.test(label) && typeof token === 'string') return token;
+  }
+  return undefined;
 }
 
 function homeTile(lockup: Json): HomeTile | null {

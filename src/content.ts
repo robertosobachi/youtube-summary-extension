@@ -12,7 +12,7 @@ import {
   transcriptText,
   watchVideoId,
 } from './youtube';
-import type { PageMessage, Summary } from './messages';
+import type { PageMessage, ReasonOutcome, Summary } from './messages';
 import type { PanelAction } from './panel';
 import type { InnertubeConfig, VideoMeta } from './youtube';
 
@@ -20,7 +20,7 @@ const CFG_TIMEOUT_MS = 3000;
 // page.ts gives up after 5 s; this only covers page.ts not answering at all.
 const NI_TIMEOUT_MS = 6000;
 
-type NiResult = { sent: boolean; status: number | null };
+type NiResult = { sent: boolean; status: number | null; reason?: ReasonOutcome };
 // `ni`: a Home tile offered Not interested for this video.
 type Known = VideoMeta & { ni?: boolean };
 
@@ -47,8 +47,10 @@ window.addEventListener('message', (event) => {
     scheduleScan();
   } else if (msg.type === 'tiles') {
     msg.tiles.forEach(remember);
+    // Tiles drawn before their data arrived get their Watched button now.
+    scheduleScan();
   } else if (msg.type === 'ni-result') {
-    niWaiters.get(msg.id)?.({ sent: msg.sent, status: msg.status });
+    niWaiters.get(msg.id)?.({ sent: msg.sent, status: msg.status, reason: msg.reason });
     niWaiters.delete(msg.id);
   }
 });
@@ -65,15 +67,57 @@ function innertubeConfig(): Promise<InnertubeConfig | null> {
   });
 }
 
-/** Asks page.ts to send the tile's Not interested command and waits for the outcome. */
-function sendNotInterested(id: string): Promise<NiResult> {
+/**
+ * Asks page.ts to send the tile's Not interested command, and with `watched` the reason
+ * after it, and waits for the outcome.
+ */
+function sendNotInterested(id: string, watched = false): Promise<NiResult> {
   return new Promise((resolve) => {
     niWaiters.set(id, resolve);
-    post(CONTENT_SOURCE, { type: 'ni', id });
-    setTimeout(() => {
-      if (niWaiters.delete(id)) resolve({ sent: true, status: null });
-    }, NI_TIMEOUT_MS);
+    post(CONTENT_SOURCE, { type: 'ni', id, watched });
+    // Watched waits on two requests in page.ts.
+    setTimeout(
+      () => {
+        if (niWaiters.delete(id)) resolve({ sent: true, status: null });
+      },
+      watched ? NI_TIMEOUT_MS * 2 : NI_TIMEOUT_MS,
+    );
   });
+}
+
+// Watched labels when Not interested went but the reason didn't, by where it stopped.
+const REASON_FAILED: Record<Exclude<ReasonOutcome, 'sent'>, string> = {
+  unread: 'Reply unread',
+  missing: 'No reason offered',
+  unsent: 'Reason not sent',
+  refused: 'Reason refused',
+};
+
+/** The tile's Watched button: Not interested plus "I've already watched", no drawer. */
+async function markWatched(id: string, button: HTMLButtonElement, label: HTMLElement) {
+  button.disabled = true;
+  button.dataset.state = '';
+  label.textContent = 'Sending...';
+  const meta = known.get(id) ?? { id, title: id, channel: 'unknown channel' };
+  try {
+    const saved = await send('rejected/add', { id, title: meta.title, channel: meta.channel });
+    if (!saved.ok) throw new Error(saved.error);
+  } catch {
+    label.textContent = 'Not saved';
+    button.disabled = false;
+    return;
+  }
+  const { sent, status, reason } = await sendNotInterested(id, true);
+  const ok = status !== null && status >= 200 && status < 300;
+  if (!sent) label.textContent = 'Reload page';
+  else if (reason === 'sent') label.textContent = 'Done';
+  else if (reason) label.textContent = REASON_FAILED[reason];
+  else if (ok) label.textContent = 'No reason sent';
+  else if (status === null) label.textContent = 'Unknown';
+  else {
+    label.textContent = `Error ${status}`;
+    button.disabled = false;
+  }
 }
 
 /** Saves the rejection first, then has YouTube's own menu command sent. */
@@ -214,10 +258,11 @@ async function summarise(id: string, fromTile = false): Promise<void> {
   }
 }
 
-// The tile button, over the thumbnail's top-left corner: the top right gets YouTube's own
-// hover buttons. A round icon, with the label sliding out on hover so it says what it does.
-const OVERLAY_CSS = `
-  :host { position: absolute; top: 8px; left: 8px; z-index: 2; margin: 0; }
+// The tile buttons, stacked down the thumbnail's top-left corner: the top right gets
+// YouTube's own hover buttons. A round icon, with the label sliding out on hover so it says
+// what it does, and staying out once the button has a result to show.
+const overlayCss = (row: number): string => `
+  :host { position: absolute; top: ${8 + row * 40}px; left: 8px; z-index: 2; margin: 0; }
   button {
     height: 32px; padding: 0 7px; gap: 0; border-radius: 16px;
     background: rgba(255, 255, 255, 0.95); color: #0f0f0f;
@@ -229,8 +274,11 @@ const OVERLAY_CSS = `
     transition: max-width 0.15s, opacity 0.15s, margin 0.15s;
   }
   button:hover, button:focus-visible { background: #fff; }
-  button:hover .label, button:focus-visible .label { max-width: 80px; opacity: 1; margin: 0 5px 0 6px; }
+  button:hover .label, button:focus-visible .label, button[data-state] .label {
+    max-width: 120px; opacity: 1; margin: 0 5px 0 6px;
+  }
   button:active { background: #ececec; }
+  button:disabled { cursor: default; }
 `;
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -253,9 +301,41 @@ function summaryIcon(): SVGSVGElement {
   return svg;
 }
 
+/** An eye with a tick: already watched. */
+function watchedIcon(): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  const eye = document.createElementNS(SVG_NS, 'path');
+  eye.setAttribute('d', 'M2 11q5-7 10-7t10 7M2 11q5 7 10 7M15 11a3 3 0 1 1-6 0 3 3 0 1 1 6 0');
+  eye.setAttribute('fill', 'none');
+  eye.setAttribute('stroke', 'currentColor');
+  eye.setAttribute('stroke-width', '2.2');
+  eye.setAttribute('stroke-linecap', 'round');
+  const tick = document.createElementNS(SVG_NS, 'path');
+  tick.setAttribute('d', 'M15 17.5l2.5 2.5 5-5');
+  tick.setAttribute('fill', 'none');
+  tick.setAttribute('stroke', 'currentColor');
+  tick.setAttribute('stroke-width', '2.2');
+  tick.setAttribute('stroke-linecap', 'round');
+  tick.setAttribute('stroke-linejoin', 'round');
+  svg.append(eye, tick);
+  return svg;
+}
+
+type ButtonOptions = {
+  /** Row on the thumbnail, from the top; without it, an inline button. */
+  overlayRow?: number;
+  icon?: () => SVGSVGElement;
+};
+
 // A small closed-shadow host for our own buttons, so YouTube's CSS can't reach them and
-// clicks never reach YouTube's handlers.
-function buttonHost(label: string, onClick: () => void, overlay = false): HTMLElement {
+// clicks never reach YouTube's handlers. `onClick` gets the button and its label to update.
+function buttonHost(
+  label: string,
+  onClick: (button: HTMLButtonElement, label: HTMLElement) => void,
+  { overlayRow, icon = summaryIcon }: ButtonOptions = {},
+): HTMLElement {
   const host = document.createElement('yts-button');
   const root = host.attachShadow({ mode: 'closed' });
   const style = document.createElement('style');
@@ -274,18 +354,19 @@ function buttonHost(label: string, onClick: () => void, overlay = false): HTMLEl
     button:hover { background: var(--yt-spec-button-chip-background-hover, rgba(0, 0, 0, 0.1)); }
     button:active { transform: scale(0.95); }
     button:focus-visible { outline: 2px solid var(--yt-spec-call-to-action, #065fd4); outline-offset: 2px; }
-    ${overlay ? OVERLAY_CSS : ''}
+    ${overlayRow === undefined ? '' : overlayCss(overlayRow)}
   `;
   const button = document.createElement('button');
   const text = document.createElement('span');
   text.className = 'label';
   text.textContent = label;
+  text.setAttribute('aria-live', 'polite');
   button.setAttribute('aria-label', label);
-  button.append(summaryIcon(), text);
+  button.append(icon(), text);
   button.addEventListener('click', (event) => {
     event.preventDefault();
     event.stopPropagation();
-    onClick();
+    onClick(button, text);
   });
   root.append(style, button);
   return host;
@@ -315,12 +396,19 @@ function placeWatchButton(): void {
 // Tiles are reused across SPA navigations, so each scan re-reads the tile's video id.
 const tileHosts = new WeakMap<Element, HTMLElement>();
 const hostIds = new WeakMap<HTMLElement, string>();
+// Watched buttons hold their result, so a reused tile gets a fresh one for its new video.
+const watchedHosts = new WeakMap<Element, { host: HTMLElement; id: string }>();
 
 function placeTileButtons(): void {
   for (const tile of document.querySelectorAll(SELECTORS.homeTile)) {
     const link = tile.querySelector<HTMLAnchorElement>(SELECTORS.tileLink);
     const id = link ? watchVideoId(link.href) : null;
     let host = tileHosts.get(tile);
+    const watched = watchedHosts.get(tile);
+    if (watched && watched.id !== id) {
+      watched.host.remove();
+      watchedHosts.delete(tile);
+    }
     if (!id) {
       host?.remove();
       continue;
@@ -332,17 +420,25 @@ function placeTileButtons(): void {
           const current = hostIds.get(created);
           if (current) summarise(current, true);
         },
-        true,
+        { overlayRow: 0 },
       );
       tileHosts.set(tile, (host = created));
     }
     hostIds.set(host, id);
-    if (!tile.contains(host)) {
-      const slot = SELECTORS.tileThumbnail
-        .map((selector) => tile.querySelector(selector))
-        .find(Boolean);
-      (slot ?? tile).append(host);
+    const slot =
+      SELECTORS.tileThumbnail.map((selector) => tile.querySelector(selector)).find(Boolean) ?? tile;
+    if (!tile.contains(host)) slot.append(host);
+    // Only where page.ts holds a Not interested command for this video.
+    if (!known.get(id)?.ni) continue;
+    let watchedHost = watchedHosts.get(tile)?.host;
+    if (!watchedHost) {
+      watchedHost = buttonHost('Watched', (button, label) => markWatched(id, button, label), {
+        overlayRow: 1,
+        icon: watchedIcon,
+      });
+      watchedHosts.set(tile, { host: watchedHost, id });
     }
+    if (!tile.contains(watchedHost)) slot.append(watchedHost);
   }
 }
 

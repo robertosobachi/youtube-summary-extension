@@ -1,16 +1,20 @@
 import { describe, expect, it } from 'vitest';
+import feedbackNi from '../fixtures/feedback-ni.json';
 import homeBrowse from '../fixtures/home-browse.json';
 import homeInitial from '../fixtures/home-initial.json';
 import transcript from '../fixtures/transcript.json';
 import {
+  commandFeedbackToken,
   extractTranscript,
   homeTiles,
   isHomeResponse,
   navResponse,
   notInterestedCommand,
+  sentFeedbackTokens,
   transcriptParams,
   transcriptText,
   watchVideoId,
+  watchedReasonToken,
 } from '../src/youtube';
 
 type Field = { field: number; value: number | Uint8Array };
@@ -158,6 +162,50 @@ describe('notInterestedCommand', () => {
         })),
     );
     expect(notInterestedCommand(lockup)).toBeUndefined();
+  });
+});
+
+describe('commandFeedbackToken', () => {
+  it('reads the token the command sends', () => {
+    const command = notInterestedCommand(lockupWith((items) => items));
+    expect(commandFeedbackToken(command)).toBe('ni-fakeVideo01');
+    expect(commandFeedbackToken({})).toBeUndefined();
+  });
+});
+
+describe('sentFeedbackTokens', () => {
+  it('reads the tokens of a feedback request body', () => {
+    expect(sentFeedbackTokens({ context: {}, feedbackTokens: ['a', 1, 'b'] })).toEqual(['a', 'b']);
+    expect(sentFeedbackTokens({ context: {} })).toEqual([]);
+  });
+});
+
+describe('watchedReasonToken', () => {
+  /** The fixture, deep-copied, with each reason's label passed through `relabel`. */
+  const relabelled = (relabel: (label: string) => string) => {
+    const copy = structuredClone(feedbackNi);
+    for (const reason of copy.feedbackResponses[0].followUpDialog.dismissalFollowUpRenderer
+      .reasons) {
+      const run = reason.dismissalReasonTextRenderer.text.runs[0];
+      run.text = relabel(run.text);
+    }
+    return copy;
+  };
+
+  it('picks the already watched reason, not the first one', () => {
+    expect(watchedReasonToken(feedbackNi)).toBe('reason-1');
+    const reversed = structuredClone(feedbackNi);
+    reversed.feedbackResponses[0].followUpDialog.dismissalFollowUpRenderer.reasons.reverse();
+    expect(watchedReasonToken(reversed)).toBe('reason-1');
+  });
+
+  it('sends no reason when the labels are in another language', () => {
+    expect(watchedReasonToken(relabelled(() => 'Ho già visto questo video'))).toBeUndefined();
+  });
+
+  it('is undefined for a missing or unexpected response', () => {
+    expect(watchedReasonToken(null)).toBeUndefined();
+    expect(watchedReasonToken({ feedbackResponses: [{ isProcessed: true }] })).toBeUndefined();
   });
 });
 
