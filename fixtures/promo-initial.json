@@ -1,0 +1,160 @@
+{
+  "responseContext": {
+    "serviceTrackingParams": [
+      {
+        "service": "GFEEDBACK",
+        "params": [
+          {
+            "key": "browse_id",
+            "value": "FEwhat_to_watch"
+          }
+        ]
+      }
+    ]
+  },
+  "contents": {
+    "twoColumnBrowseResultsRenderer": {
+      "tabs": [
+        {
+          "tabRenderer": {
+            "selected": true,
+            "content": {
+              "richGridRenderer": {
+                "contents": [
+                  {
+                    "richItemRenderer": {
+                      "content": {
+                        "adSlotRenderer": {}
+                      }
+                    }
+                  },
+                  {
+                    "richItemRenderer": {
+                      "content": {
+                        "lockupViewModel": {
+                          "contentId": "prmv0000001",
+                          "contentType": "LOCKUP_CONTENT_TYPE_VIDEO"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "richItemRenderer": {
+                      "content": {
+                        "lockupViewModel": {
+                          "contentId": "prmv0000002",
+                          "contentType": "LOCKUP_CONTENT_TYPE_VIDEO"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "richSectionRenderer": {
+                      "content": {
+                        "brandVideoShelfRenderer": {
+                          "header": {
+                            "sectionHeaderViewModel": {
+                              "headline": {
+                                "content": "Get more from memberships"
+                              },
+                              "bottomBadges": [
+                                {
+                                  "badgeViewModel": {
+                                    "badgeText": "YouTube featured",
+                                    "badgeStyle": "BADGE_PROMOTED"
+                                  }
+                                }
+                              ]
+                            }
+                          },
+                          "subtitle": {
+                            "runs": [
+                              {
+                                "text": "Enjoy perks like members-only videos and much more"
+                              }
+                            ]
+                          },
+                          "content": [
+                            {
+                              "videoRenderer": {
+                                "videoId": "prom0000030"
+                              }
+                            },
+                            {
+                              "videoRenderer": {
+                                "videoId": "prom0000031"
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "richItemRenderer": {
+                      "content": {
+                        "lockupViewModel": {
+                          "contentId": "prmv0000003",
+                          "contentType": "LOCKUP_CONTENT_TYPE_VIDEO"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "richItemRenderer": {
+                      "content": {
+                        "adSlotRenderer": {}
+                      }
+                    }
+                  },
+                  {
+                    "richItemRenderer": {
+                      "content": {
+                        "adSlotRenderer": {}
+                      }
+                    }
+                  },
+                  {
+                    "richSectionRenderer": {
+                      "content": {
+                        "brandVideoSingletonRenderer": {
+                          "title": {
+                            "runs": [
+                              {
+                                "text": "Featured promo"
+                              }
+                            ]
+                          },
+                          "badgeText": {
+                            "simpleText": "YouTube featured"
+                          },
+                          "content": {
+                            "videoRenderer": {
+                              "videoId": "prom0000160"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "richItemRenderer": {
+                      "content": {
+                        "adSlotRenderer": {}
+                      }
+                    }
+                  },
+                  {
+                    "continuationItemRenderer": {
+                      "trigger": "CONTINUATION_TRIGGER_ON_ITEM_SHOWN"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

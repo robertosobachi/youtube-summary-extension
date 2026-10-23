@@ -33,7 +33,12 @@ export function parseMaxAgeDays(raw: unknown): number {
   return Number.isFinite(days) && days >= 0 ? days : DEFAULT_MAX_AGE_DAYS;
 }
 
-export type Settings = { apiKey: string; langs: string[]; maxAgeDays: number };
+export const DEFAULT_HIDE_PROMOS = false;
+
+/** youtube.com localStorage key: content.ts mirrors the promo toggle there, '1' for on. */
+export const PROMOS_KEY = 'yts:hidePromos';
+
+export type Settings = { apiKey: string; langs: string[]; maxAgeDays: number; hidePromos: boolean };
 
 /** What extension pages see of the settings: never the key itself. */
 export type SettingsView = {
@@ -41,6 +46,7 @@ export type SettingsView = {
   keyHint: string;
   langs: string[];
   maxAgeDays: number;
+  hidePromos: boolean;
 };
 
 export type Summary = {
@@ -67,9 +73,13 @@ type Api = {
   'settings/drawer': { req: object; res: Outcome };
   // Open to content scripts: says whether a key is saved, nothing more.
   'key/status': { req: object; res: { hasKey: boolean } };
-  // Open to content scripts: the Home age cut-off, which is not private.
-  'filter/get': { req: object; res: { maxAgeDays: number } };
+  // Saved on its own as the box is ticked, so open tabs apply it at once.
+  'promos/save': { req: { hidePromos: boolean }; res: SettingsView };
+  // Open to content scripts: the feed filters, which are not private.
+  'filter/get': { req: object; res: { maxAgeDays: number; hidePromos: boolean } };
   'summary/get': { req: { id: string }; res: Summary | null };
+  // Open to content scripts: which videos have a cached summary, to hide them from feeds.
+  'summary/ids': { req: object; res: { ids: string[] } };
   'summary/create': {
     req: { id: string; title: string; channel: string; transcript: string };
     res: SummaryResult;
@@ -88,10 +98,14 @@ export const PRIVILEGED: readonly MessageType[] = [
   'settings/save',
   'key/test',
   'settings/drawer',
+  'promos/save',
 ];
 
 /** From the service worker to a content script. */
-export type TabMessage = { type: 'settings/open' } | { type: 'filter/set'; maxAgeDays: number };
+export type TabMessage =
+  | { type: 'settings/open' }
+  | { type: 'filter/set'; maxAgeDays: number }
+  | { type: 'promos/set'; hidePromos: boolean };
 
 export function send<K extends MessageType>(type: K, req: Api[K]['req']): Promise<Reply<K>> {
   // A reloaded extension leaves the scripts already in open tabs without chrome.runtime.

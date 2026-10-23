@@ -1,7 +1,7 @@
 // ISOLATED world: buttons, the drawer and youtube.com fetches. Claude calls and storage go
 // through the service worker; page data comes from page.ts by postMessage.
 import { chatText } from './chat';
-import { AGE_KEY, CONTENT_SOURCE, PAGE_SOURCE, isFrom, post, send } from './messages';
+import { AGE_KEY, CONTENT_SOURCE, PAGE_SOURCE, PROMOS_KEY, isFrom, post, send } from './messages';
 import { createPanel } from './panel';
 import {
   SELECTORS,
@@ -28,6 +28,8 @@ type Known = VideoMeta & { ni?: boolean };
 const panel = createPanel(cancel);
 // Titles and channels seen in page data, by video id.
 const known = new Map<string, Known>();
+// Videos with a cached summary: their feed tiles are hidden, in this browser only.
+const summarised = new Set<string>();
 const cfgWaiters = new Map<string, (cfg: InnertubeConfig | null) => void>();
 const niWaiters = new Map<string, (result: NiResult) => void>();
 
@@ -202,11 +204,13 @@ const openSettings = (): void => {
   panel.frame('Settings', chrome.runtime.getURL(`options.html?theme=${theme}`));
 };
 
-// The extension's Options entry and saved age cut-offs, handed over by the service worker.
+// The extension's Options entry and saved filters, handed over by the service worker.
 chrome.runtime.onMessage.addListener((msg: TabMessage, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id) return false;
   if (msg.type === 'filter/set') {
     mirrorFilter(msg.maxAgeDays);
+  } else if (msg.type === 'promos/set') {
+    applyPromos(msg.hidePromos);
   } else if (msg.type === 'settings/open') {
     // Like the close button: a summary still on its way mustn't replace the settings.
     cancel();
@@ -230,8 +234,35 @@ function mirrorFilter(maxAgeDays: number): void {
   }
 }
 
+// page.ts removes promos from the responses it sees; this hides the ones already drawn, so
+// the toggle applies at once. Turning it off shows those again, not the ones page.ts removed.
+const promoStyle = document.createElement('style');
+promoStyle.textContent = `${SELECTORS.promoSection} { display: none !important; }`;
+
+function applyPromos(hide: boolean): void {
+  try {
+    localStorage.setItem(PROMOS_KEY, hide ? '1' : '0');
+  } catch {
+    // Storage blocked: page.ts leaves responses alone and the style does all the hiding.
+  }
+  if (hide) (document.head ?? document.documentElement).append(promoStyle);
+  else promoStyle.remove();
+}
+
 send('filter/get', {})
-  .then(({ maxAgeDays }) => mirrorFilter(maxAgeDays))
+  .then(({ maxAgeDays, hidePromos }) => {
+    mirrorFilter(maxAgeDays);
+    applyPromos(hidePromos);
+  })
+  .catch(() => {});
+
+function markSummarised(id: string): void {
+  summarised.add(id);
+  scheduleScan();
+}
+
+send('summary/ids', {})
+  .then(({ ids }) => ids.forEach(markSummarised))
   .catch(() => {});
 
 async function hasKey(): Promise<boolean> {
@@ -274,7 +305,10 @@ async function summarise(id: string, fromTile = false): Promise<void> {
   try {
     const cached = await send('summary/get', { id });
     if (stale()) return;
-    if (cached && 'summary' in cached) return showSummary(id, cached, fromTile);
+    if (cached && 'summary' in cached) {
+      markSummarised(id);
+      return showSummary(id, cached, fromTile);
+    }
 
     const keySaved = await hasKey();
     if (stale()) return;
@@ -289,8 +323,10 @@ async function summarise(id: string, fromTile = false): Promise<void> {
     panel.status('Summarising...');
     const result = await send('summary/create', { id, title, channel, transcript });
     if (stale()) return;
-    if (result.ok) showSummary(id, result.entry, fromTile, result.warning);
-    else panel.error(result.error);
+    if (result.ok) {
+      markSummarised(id);
+      showSummary(id, result.entry, fromTile, result.warning);
+    } else panel.error(result.error);
   } catch (err) {
     if (!stale()) panel.error(err instanceof Error ? err.message : String(err));
   } finally {
@@ -380,18 +416,29 @@ function buttonHost(
   const root = host.attachShadow({ mode: 'closed' });
   const style = document.createElement('style');
   style.textContent = `
-    :host { all: initial; display: inline-flex; align-items: center; align-self: center; margin: 0 8px 8px 0; }
+    :host {
+      all: initial; display: inline-flex; align-items: center; align-self: center; margin: 0 8px 8px 0;
+      /* Fallbacks for YouTube's own colours, which don't always reach the button. */
+      --fg: #0f0f0f;
+      --chip: rgba(0, 0, 0, 0.05);
+      --chip-hover: rgba(0, 0, 0, 0.1);
+    }
+    :host-context(html[dark]) {
+      --fg: #f1f1f1;
+      --chip: rgba(255, 255, 255, 0.1);
+      --chip-hover: rgba(255, 255, 255, 0.2);
+    }
     button {
       display: inline-flex; align-items: center; gap: 6px;
       height: 40px; padding: 0 16px 0 12px; border: 0; border-radius: 20px; cursor: pointer;
-      background: var(--yt-spec-badge-chip-background, rgba(0, 0, 0, 0.05));
-      color: var(--yt-spec-text-primary, #0f0f0f);
+      background: var(--yt-spec-badge-chip-background, var(--chip));
+      color: var(--yt-spec-text-primary, var(--fg));
       font: 500 14px Roboto, Arial, sans-serif;
       white-space: nowrap;
       transition: background-color 0.1s, color 0.1s, transform 0.1s;
     }
     svg { width: 18px; height: 18px; flex: none; color: #d97757; }
-    button:hover { background: var(--yt-spec-button-chip-background-hover, rgba(0, 0, 0, 0.1)); }
+    button:hover { background: var(--yt-spec-button-chip-background-hover, var(--chip-hover)); }
     button:active { transform: scale(0.95); }
     button:focus-visible { outline: 2px solid var(--yt-spec-call-to-action, #065fd4); outline-offset: 2px; }
     ${overlayRow === undefined ? '' : overlayCss(overlayRow)}
@@ -442,10 +489,18 @@ const hostIds = new WeakMap<HTMLElement, string>();
 // Watched buttons hold their result, so a reused tile gets a fresh one for its new video.
 const watchedHosts = new WeakMap<Element, { host: HTMLElement; id: string }>();
 
+// Our own attribute, not `hidden`: YouTube's elements set that themselves.
+const SUMMARISED_ATTR = 'data-yts-summarised';
+const hideStyle = document.createElement('style');
+hideStyle.textContent = `[${SUMMARISED_ATTR}] { display: none !important; }`;
+
 function placeTileButtons(): void {
+  if (!hideStyle.isConnected) (document.head ?? document.documentElement).append(hideStyle);
   for (const tile of document.querySelectorAll(SELECTORS.feedTile)) {
     const link = tile.querySelector<HTMLAnchorElement>(SELECTORS.tileLink);
     const id = link ? watchVideoId(link.href) : null;
+    // Re-read every scan: a reused tile shows again once it holds another video.
+    tile.toggleAttribute(SUMMARISED_ATTR, id !== null && summarised.has(id));
     let host = tileHosts.get(tile);
     const watched = watchedHosts.get(tile);
     if (watched && watched.id !== id) {

@@ -1,9 +1,18 @@
 // MAIN world, document_start. Reads YouTube's own page data and passes the public parts to
 // content.ts with postMessage. Never sees the API key or storage. Its only writes are
-// removing videos older than the age cut-off from Home responses before YouTube renders
-// them, YouTube's own Not interested command and, for Watched, the "I've already watched"
-// reason YouTube offers after it, both dispatched through YouTube's own router.
-import { AGE_KEY, CONTENT_SOURCE, PAGE_SOURCE, isFrom, parseMaxAgeDays, post } from './messages';
+// removing videos older than the age cut-off and YouTube featured promos from Home responses
+// before YouTube renders them, YouTube's own Not interested command and, for Watched, the
+// "I've already watched" reason YouTube offers after it, both dispatched through YouTube's
+// own router.
+import {
+  AGE_KEY,
+  CONTENT_SOURCE,
+  PAGE_SOURCE,
+  PROMOS_KEY,
+  isFrom,
+  parseMaxAgeDays,
+  post,
+} from './messages';
 import {
   BROWSE_PATH,
   FEEDBACK_PATH,
@@ -13,6 +22,7 @@ import {
   isHomeResponse,
   navResponse,
   removeOldVideos,
+  removePromos,
   sentFeedbackTokens,
   watchVideo,
   watchedReasonToken,
@@ -48,10 +58,22 @@ function maxAgeDays(): number {
   }
 }
 
-/** Removes old videos from a Home response in place. True when anything went. */
+/** Read on every response too. content.ts also hides promos already on the page. */
+function hidePromos(): boolean {
+  try {
+    return localStorage.getItem(PROMOS_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/** Removes old videos and promos from a Home response in place. True when anything went. */
 function filterHome(data: unknown): boolean {
+  if (!isHomeResponse(data)) return false;
   const days = maxAgeDays();
-  return days > 0 && isHomeResponse(data) && removeOldVideos(data, days).removed > 0;
+  const old = days > 0 && removeOldVideos(data, days).removed > 0;
+  const promos = hidePromos() && removePromos(data) > 0;
+  return old || promos;
 }
 
 /** Reads the tiles of a Home response and posts them as one batch. */

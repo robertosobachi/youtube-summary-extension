@@ -85,6 +85,11 @@
         margin: 0;
         font-weight: normal;
       }
+      label.toggle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
       input:not([type='checkbox']),
       select {
         box-sizing: border-box;
@@ -156,6 +161,16 @@
         <p class="hint">
           YouTube rounds dates, so "1 year ago" can mean up to 23 months. Applies to videos loaded
           after saving: reload YouTube for the ones already shown.
+        </p>
+
+        <label class="toggle">
+          <input id="hide-promos" type="checkbox" />
+          Hide YouTube featured promos
+        </label>
+        <p class="hint">
+          Shelves such as "Get more from memberships" and Premium trailers. Saved and applied as
+          soon as you tick or untick it. After unticking, reload YouTube to bring back any already
+          filtered out.
         </p>
 
         <div class="actions">

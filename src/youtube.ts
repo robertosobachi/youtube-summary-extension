@@ -33,6 +33,12 @@ export const SELECTORS = {
     '.yt-lockup-view-model__content-image',
     '.yt-lockup-view-model-wiz__content-image',
   ],
+  /**
+   * "YouTube featured" promos in a feed: the memberships shelf, Premium trailers and the
+   * like. Matched by renderer, so in any language.
+   */
+  promoSection:
+    'ytd-rich-section-renderer:has(ytd-brand-video-shelf-renderer, ytd-brand-video-singleton-renderer)',
 };
 
 export const BROWSE_PATH = '/youtubei/v1/browse';
@@ -359,6 +365,38 @@ export function removeOldVideos(
   };
   walk(data);
   return { removed, total };
+}
+
+// The renderers of "YouTube featured" promos, as the page elements in SELECTORS.promoSection.
+const PROMO_RENDERERS = ['brandVideoShelfRenderer', 'brandVideoSingletonRenderer'];
+
+/** True for a feed element holding a YouTube featured promo. Matched by renderer, not text. */
+export function isPromoSection(element: unknown): boolean {
+  const content = at(element, ['richSectionRenderer', 'content']);
+  return isObject(content) && PROMO_RENDERERS.some((key) => key in content);
+}
+
+/** Removes, in place, every YouTube featured promo in a feed. Returns how many went. */
+export function removePromos(data: unknown): number {
+  let removed = 0;
+  const walk = (node: unknown): void => {
+    if (Array.isArray(node)) {
+      let write = 0;
+      for (const element of node) {
+        if (isPromoSection(element)) {
+          removed++;
+          continue;
+        }
+        walk(element);
+        node[write++] = element;
+      }
+      node.length = write;
+    } else if (isObject(node)) {
+      Object.values(node).forEach(walk);
+    }
+  };
+  walk(data);
+  return removed;
 }
 
 /** Same-origin oEmbed, as the CLI uses for titles: no auth, public data only. */

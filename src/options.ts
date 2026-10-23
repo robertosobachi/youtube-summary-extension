@@ -21,6 +21,7 @@ const form = document.querySelector<HTMLFormElement>('#settings')!;
 const keyInput = document.querySelector<HTMLInputElement>('#api-key')!;
 const langsList = document.querySelector<HTMLDivElement>('#langs .list')!;
 const maxAgeSelect = document.querySelector<HTMLSelectElement>('#max-age')!;
+const hidePromosBox = document.querySelector<HTMLInputElement>('#hide-promos')!;
 const testButton = document.querySelector<HTMLButtonElement>('#test')!;
 const status = document.querySelector<HTMLOutputElement>('#status')!;
 
@@ -30,6 +31,7 @@ function show(settings: SettingsView): void {
   showLangs(settings.langs);
   maxAgeSelect.value = String(settings.maxAgeDays);
   savedMaxAge = settings.maxAgeDays;
+  hidePromosBox.checked = settings.hidePromos;
 }
 
 // To say when a reload is needed: the cut-off only reaches responses loaded after saving.
@@ -81,6 +83,16 @@ form.addEventListener('submit', async (event) => {
   const ageChanged = maxAgeDays !== savedMaxAge;
   show(await send('settings/save', { apiKey: keyInput.value, langs: checkedLangs(), maxAgeDays }));
   report(ageChanged ? 'Saved. Reload YouTube to refilter videos already shown.' : 'Saved.', true);
+});
+
+// Saved on its own, without Save: open YouTube tabs apply it at once.
+hidePromosBox.addEventListener('change', async () => {
+  const { hidePromos } = await send('promos/save', { hidePromos: hidePromosBox.checked });
+  hidePromosBox.checked = hidePromos;
+  report(
+    hidePromos ? 'Promos hidden.' : 'Promos shown. Reload YouTube for any filtered out.',
+    true,
+  );
 });
 
 testButton.addEventListener('click', async () => {

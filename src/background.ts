@@ -11,6 +11,7 @@ import {
   takeEvents,
 } from './claude';
 import {
+  DEFAULT_HIDE_PROMOS,
   DEFAULT_LANGS,
   DEFAULT_MAX_AGE_DAYS,
   PRIVILEGED,
@@ -45,6 +46,7 @@ async function getSettings(): Promise<Settings> {
     apiKey: '',
     langs: DEFAULT_LANGS,
     maxAgeDays: DEFAULT_MAX_AGE_DAYS,
+    hidePromos: DEFAULT_HIDE_PROMOS,
     ...(settings as Partial<Settings> | undefined),
   };
 }
@@ -62,8 +64,8 @@ function serialised<T>(task: () => Promise<T>): Promise<T> {
   return run;
 }
 
-function view({ apiKey, langs, maxAgeDays }: Settings): SettingsView {
-  return { hasKey: Boolean(apiKey), keyHint: apiKey.slice(-4), langs, maxAgeDays };
+function view({ apiKey, langs, maxAgeDays, hidePromos }: Settings): SettingsView {
+  return { hasKey: Boolean(apiKey), keyHint: apiKey.slice(-4), langs, maxAgeDays, hidePromos };
 }
 
 async function saveSettings(
@@ -74,6 +76,7 @@ async function saveSettings(
   const saved = await serialised(async () => {
     const current = await getSettings();
     const next = {
+      ...current,
       apiKey: apiKey?.trim() || current.apiKey,
       langs: normaliseLangs(langs),
       maxAgeDays: parseMaxAgeDays(maxAgeDays),
@@ -85,10 +88,24 @@ async function saveSettings(
   return view(saved);
 }
 
+/** The promo toggle alone, saved as soon as it changes and applied to open tabs at once. */
+async function savePromos(hidePromos: unknown): Promise<SettingsView> {
+  const saved = await serialised(async () => {
+    const next = { ...(await getSettings()), hidePromos: hidePromos === true };
+    await chrome.storage.local.set({ settings: next });
+    return next;
+  });
+  await broadcast({ type: 'promos/set', hidePromos: saved.hidePromos });
+  return view(saved);
+}
+
 /** Hands the age cut-off to every open YouTube tab, for the responses it loads next. */
-async function broadcastFilter(maxAgeDays: number): Promise<void> {
+function broadcastFilter(maxAgeDays: number): Promise<void> {
+  return broadcast({ type: 'filter/set', maxAgeDays });
+}
+
+async function broadcast(msg: TabMessage): Promise<void> {
   const tabs = await chrome.tabs.query({ url: 'https://www.youtube.com/*' });
-  const msg: TabMessage = { type: 'filter/set', maxAgeDays };
   // A tab loaded before the extension has no content script to answer.
   await Promise.all(
     tabs.map((tab) => (tab.id ? chrome.tabs.sendMessage(tab.id, msg).catch(() => {}) : null)),
@@ -264,10 +281,16 @@ async function handle(msg: Message, sender: chrome.runtime.MessageSender): Promi
       return openInDrawer(sender);
     case 'key/status':
       return { hasKey: Boolean((await getSettings()).apiKey) };
-    case 'filter/get':
-      return { maxAgeDays: (await getSettings()).maxAgeDays };
+    case 'promos/save':
+      return savePromos(msg.hidePromos);
+    case 'filter/get': {
+      const { maxAgeDays, hidePromos } = await getSettings();
+      return { maxAgeDays, hidePromos };
+    }
     case 'summary/get':
       return isVideoId(msg.id) ? ((await getSummaries())[msg.id] ?? null) : null;
+    case 'summary/ids':
+      return { ids: Object.keys(await getSummaries()) };
     case 'summary/create':
       return summarise(msg);
     case 'summary/cancel':
