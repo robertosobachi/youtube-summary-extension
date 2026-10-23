@@ -13,8 +13,35 @@ const CSS = `
   right: 0;
   bottom: 0;
   z-index: 2100;
-  width: min(420px, 100vw);
+  width: min(var(--yts-width, 420px), 100vw);
+  --accent: #c15f3c;
 }
+:host-context(html[dark]) { --accent: #e08a6d; }
+/* Drag the left edge to resize. */
+.resize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -3px;
+  width: 6px;
+  z-index: 1;
+  cursor: ew-resize;
+  touch-action: none;
+}
+.resize::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 2px;
+  width: 2px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.resize:hover::after, .dragging .resize::after { opacity: 1; }
+.dragging { user-select: none; }
+.dragging iframe { pointer-events: none; }
 .drawer {
   box-sizing: border-box;
   height: 100%;
@@ -25,9 +52,7 @@ const CSS = `
   border-left: 1px solid var(--yt-spec-10-percent-layer, rgba(0, 0, 0, 0.1));
   box-shadow: -4px 0 16px rgba(0, 0, 0, 0.15);
   font: 14px/1.5 Roboto, Arial, sans-serif;
-  --accent: #c15f3c;
 }
-:host-context(html[dark]) .drawer { --accent: #e08a6d; }
 header {
   display: flex;
   align-items: flex-start;
@@ -162,6 +187,28 @@ export function renderMarkdown(markdown: string): DocumentFragment {
   return out;
 }
 
+const WIDTH_KEY = 'yts-panel-width';
+const MIN_WIDTH = 320;
+
+/** localStorage is YouTube's here, which is fine for a width; it can throw or be empty. */
+function savedWidth(): number | null {
+  try {
+    const width = Number(localStorage.getItem(WIDTH_KEY));
+    return width >= MIN_WIDTH ? width : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveWidth(width: number | null): void {
+  try {
+    if (width === null) localStorage.removeItem(WIDTH_KEY);
+    else localStorage.setItem(WIDTH_KEY, String(width));
+  } catch {
+    // Not kept: the drawer opens at the default width next time.
+  }
+}
+
 /** `onClose` runs when you close the drawer yourself, not when the code closes it. */
 export function createPanel(onClose: () => void) {
   const host = document.createElement('yts-panel');
@@ -173,14 +220,43 @@ export function createPanel(onClose: () => void) {
   const close = el('button', 'close', '×');
   const body = el('div', 'body');
   const footer = el('footer');
+  const resize = el('div', 'resize');
   close.title = 'Close';
+  resize.title = 'Drag to resize, double-click to reset';
   close.addEventListener('click', () => {
     host.remove();
     onClose();
   });
   header.append(title, close);
   drawer.append(header, body, footer);
-  root.append(style, drawer);
+  root.append(style, resize, drawer);
+
+  let width = savedWidth();
+  const setWidth = (next: number | null): void => {
+    width = next;
+    if (next === null) host.style.removeProperty('--yts-width');
+    else host.style.setProperty('--yts-width', `${next}px`);
+  };
+  setWidth(width);
+  resize.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    resize.setPointerCapture(event.pointerId);
+    drawer.classList.add('dragging');
+  });
+  resize.addEventListener('pointermove', (event) => {
+    if (!resize.hasPointerCapture(event.pointerId)) return;
+    const max = Math.max(MIN_WIDTH, Math.round(innerWidth * 0.9));
+    setWidth(Math.min(max, Math.max(MIN_WIDTH, Math.round(innerWidth - event.clientX))));
+  });
+  resize.addEventListener('lostpointercapture', () => {
+    drawer.classList.remove('dragging');
+    saveWidth(width);
+  });
+  resize.addEventListener('dblclick', () => {
+    setWidth(null);
+    saveWidth(null);
+  });
 
   const open = (heading: string): void => {
     title.textContent = heading;
