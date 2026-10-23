@@ -10,6 +10,7 @@ import {
   oembedUrl,
   transcriptRequest,
   transcriptText,
+  watchUrl,
   watchVideoId,
 } from './youtube';
 import type { PageMessage, ReasonOutcome, Summary } from './messages';
@@ -172,24 +173,27 @@ async function fetchTranscript(id: string, signal: AbortSignal): Promise<string 
   return lines.length ? transcriptText(lines) : null;
 }
 
+const copyAction = (label: string, text: string): PanelAction => ({
+  label,
+  run: async (button) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      button.textContent = 'Copied';
+    } catch {
+      button.textContent = 'Copy failed';
+    }
+  },
+});
+
 function showSummary(id: string, entry: Summary, fromTile: boolean, note?: string): void {
   const actions: PanelAction[] = [
-    {
-      label: 'Copy for chat',
-      run: async (button) => {
-        try {
-          await navigator.clipboard.writeText(chatText(id, entry));
-          button.textContent = 'Copied';
-        } catch {
-          button.textContent = 'Copy failed';
-        }
-      },
-    },
+    copyAction('Copy for chat', chatText(id, entry)),
+    copyAction('Copy link', watchUrl(id)),
   ];
   if (fromTile && known.get(id)?.ni) {
     actions.push({ label: 'Not interested', run: (button) => notInterested(id, entry, button) });
   }
-  panel.show(`${entry.title} (${entry.channel})`, entry.summary, actions, note);
+  panel.show({ id, title: entry.title, channel: entry.channel }, entry.summary, actions, note);
 }
 
 const openSettings = (): void => panel.frame('Settings', chrome.runtime.getURL('options.html'));

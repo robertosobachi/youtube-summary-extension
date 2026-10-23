@@ -1,5 +1,7 @@
 // The right-side drawer, in a closed shadow root. Text only ever goes in through
 // textContent: summaries come from a model and titles from YouTube.
+import { watchUrl } from './youtube';
+import type { VideoMeta } from './youtube';
 
 export type PanelAction = { label: string; run: (button: HTMLButtonElement) => void };
 
@@ -23,7 +25,9 @@ const CSS = `
   border-left: 1px solid var(--yt-spec-10-percent-layer, rgba(0, 0, 0, 0.1));
   box-shadow: -4px 0 16px rgba(0, 0, 0, 0.15);
   font: 14px/1.5 Roboto, Arial, sans-serif;
+  --accent: #c15f3c;
 }
+:host-context(html[dark]) .drawer { --accent: #e08a6d; }
 header {
   display: flex;
   align-items: flex-start;
@@ -36,7 +40,11 @@ header {
   font-size: 14px;
   font-weight: 500;
   color: var(--yt-spec-text-secondary, #606060);
+  overflow-wrap: anywhere;
 }
+.channel { display: block; font-size: 12px; font-weight: 400; }
+.title a { color: var(--yt-spec-text-primary, #0f0f0f); font-size: 15px; text-decoration: none; }
+.title a:hover { text-decoration: underline; }
 .body {
   flex: 1;
   overflow-y: auto;
@@ -44,10 +52,29 @@ header {
 }
 .body.framed { padding: 0; overflow: hidden; }
 iframe { display: block; width: 100%; height: 100%; border: 0; }
-.body h2 { font-size: 18px; margin: 8px 0; }
-.body h3 { font-size: 15px; margin: 16px 0 4px; }
+.body h2 { font-size: 20px; line-height: 1.3; font-weight: 700; margin: 8px 0 4px; }
+.body h3 {
+  margin: 20px 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
 .body p { margin: 4px 0; }
 .body ul { margin: 4px 0; padding-left: 20px; }
+.body li { margin: 6px 0; }
+.body li::marker { color: var(--accent); }
+section:first-of-type p { font-size: 15px; }
+/* The last part (Key takeaway) as a callout. */
+section:last-of-type:not(:first-of-type) {
+  margin-top: 20px;
+  padding: 10px 14px;
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+section:last-of-type:not(:first-of-type) h3 { margin-top: 0; }
 .status { color: var(--yt-spec-text-secondary, #606060); }
 .error { color: var(--yt-spec-brand-button-background, #c00); white-space: pre-wrap; overflow-wrap: anywhere; }
 footer {
@@ -70,6 +97,11 @@ button {
 }
 button:hover { background: var(--yt-spec-button-chip-background-hover, rgba(0, 0, 0, 0.1)); }
 button:disabled { opacity: 0.6; cursor: default; }
+footer button:first-child {
+  background: var(--yt-spec-text-primary, #0f0f0f);
+  color: var(--yt-spec-base-background, #fff);
+}
+footer button:first-child:hover { opacity: 0.85; }
 .close { padding: 0; width: 36px; flex: none; background: transparent; font-size: 20px; }
 `;
 
@@ -97,23 +129,35 @@ function inline(parent: HTMLElement, text: string): HTMLElement {
   return parent;
 }
 
-/** The subset of Markdown the summary prompt produces: #, ##, - and **. */
+/**
+ * The subset of Markdown the summary prompt produces: #, ##, - and **. Each ## heading and
+ * what follows it go in a <section>, so the CSS can style the parts by position: the
+ * headings come back in the video's language.
+ */
 export function renderMarkdown(markdown: string): DocumentFragment {
   const out = document.createDocumentFragment();
+  let parent: DocumentFragment | HTMLElement = out;
   let list: HTMLUListElement | null = null;
   for (const raw of markdown.split('\n')) {
     const line = raw.trim();
     const item = /^[-*]\s+(.*)$/.exec(line);
     if (item) {
-      if (!list) out.append((list = el('ul')));
+      if (!list) parent.append((list = el('ul')));
       list.append(inline(el('li'), item[1]));
       continue;
     }
     list = null;
     if (!line) continue;
     const heading = /^(#{1,6})\s+(.*)$/.exec(line);
-    if (heading) out.append(inline(el(heading[1].length === 1 ? 'h2' : 'h3'), heading[2]));
-    else out.append(inline(el('p'), line));
+    if (heading?.[1].length === 1) {
+      out.append(inline(el('h2'), heading[2]));
+      parent = out;
+    } else if (heading) {
+      out.append((parent = el('section')));
+      parent.append(inline(el('h3'), heading[2]));
+    } else {
+      parent.append(inline(el('p'), line));
+    }
   }
   return out;
 }
@@ -158,8 +202,12 @@ export function createPanel(onClose: () => void) {
     error(text: string): void {
       body.replaceChildren(el('p', 'error', text));
     },
-    show(heading: string, markdown: string, actions: PanelAction[], note?: string): void {
-      open(heading);
+    /** A summary, under the video's channel and its title linking to the video. */
+    show(video: VideoMeta, markdown: string, actions: PanelAction[], note?: string): void {
+      open('');
+      const link = el('a', undefined, video.title);
+      link.href = watchUrl(video.id);
+      title.append(el('span', 'channel', video.channel), link);
       body.append(renderMarkdown(markdown));
       if (note) body.append(el('p', 'status', note));
       for (const action of actions) {
