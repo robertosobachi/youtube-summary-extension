@@ -420,11 +420,12 @@ function placeWatchButton(): void {
     watchButton?.remove();
     return;
   }
-  if (watchButton?.isConnected) return;
   const target = SELECTORS.watchActions
     .map((selector) => document.querySelector(selector))
     .find(Boolean);
   if (!target) return;
+  // A fallback container can render before the menu; move up once the better one appears.
+  if (watchButton?.parentElement === target) return;
   // The id is read at click time: YouTube keeps the same page elements across videos.
   watchButton ??= buttonHost('Summarise', () => {
     const id = watchVideoId(location.href);
