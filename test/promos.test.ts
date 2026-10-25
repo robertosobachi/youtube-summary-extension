@@ -46,6 +46,14 @@ describe('removePromos', () => {
     expect(data).toEqual(ageFixture);
   });
 
+  it('removes a Premium offer banner', () => {
+    const video = { richItemRenderer: { content: { lockupViewModel: {} } } };
+    const data = [{ richSectionRenderer: { content: { statementBannerRenderer: {} } } }, video];
+    expect(isPromoSection(data[0])).toBe(true);
+    expect(removePromos(data)).toBe(1);
+    expect(data).toEqual([video]);
+  });
+
   it('runs alongside the age cut-off', () => {
     const data = structuredClone(ageFixture as Json);
     removeOldVideos(data, 180);

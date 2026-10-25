@@ -34,11 +34,11 @@ export const SELECTORS = {
     '.yt-lockup-view-model-wiz__content-image',
   ],
   /**
-   * "YouTube featured" promos in a feed: the memberships shelf, Premium trailers and the
-   * like. Matched by renderer, so in any language.
+   * "YouTube featured" promos in a feed: the memberships shelf, Premium trailers, Premium
+   * offer banners and the like. Matched by renderer, so in any language.
    */
   promoSection:
-    'ytd-rich-section-renderer:has(ytd-brand-video-shelf-renderer, ytd-brand-video-singleton-renderer)',
+    'ytd-rich-section-renderer:has(ytd-brand-video-shelf-renderer, ytd-brand-video-singleton-renderer, ytd-statement-banner-renderer)',
 };
 
 export const BROWSE_PATH = '/youtubei/v1/browse';
@@ -368,7 +368,11 @@ export function removeOldVideos(
 }
 
 // The renderers of "YouTube featured" promos, as the page elements in SELECTORS.promoSection.
-const PROMO_RENDERERS = ['brandVideoShelfRenderer', 'brandVideoSingletonRenderer'];
+const PROMO_RENDERERS = [
+  'brandVideoShelfRenderer',
+  'brandVideoSingletonRenderer',
+  'statementBannerRenderer',
+];
 
 /** True for a feed element holding a YouTube featured promo. Matched by renderer, not text. */
 export function isPromoSection(element: unknown): boolean {
