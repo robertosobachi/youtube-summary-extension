@@ -161,11 +161,14 @@ function tapFetch(): void {
     const pending = original.call(this, input, init);
     if (path === BROWSE_PATH) return pending.then(filteredBrowse);
     if (tokens) {
-      Promise.all([tokens, pending])
+      // Cloned in the first handler on `pending`: YouTube's own, registered after this, reads
+      // the body straight away, and a used body can't be cloned.
+      const reply = pending.then((res) => (res.ok ? res.clone() : null));
+      Promise.all([tokens, reply])
         .then(async ([sent, res]) => {
           const waiters = sent.flatMap((token) => feedbackWaiters.get(token) ?? []);
           if (!waiters.length) return;
-          const data = res.ok ? await res.clone().json() : null;
+          const data: unknown = res ? await res.json().catch(() => null) : null;
           waiters.forEach((resolve) => resolve(data));
         })
         .catch(() => {});
