@@ -23,6 +23,8 @@ import type { InnertubeConfig, VideoMeta } from './youtube';
 const CFG_TIMEOUT_MS = 3000;
 // page.ts gives up after 5 s; this only covers page.ts not answering at all.
 const NI_TIMEOUT_MS = 6000;
+// Long enough to read Watched's result before its tile goes.
+const HIDE_DELAY_MS = 1500;
 
 type NiResult = { sent: boolean; status: number | null; reason?: ReasonOutcome };
 // `ni`: a Home tile offered Not interested for this video.
@@ -31,8 +33,9 @@ type Known = VideoMeta & { ni?: boolean };
 const panel = createPanel(cancel);
 // Titles and channels seen in page data, by video id.
 const known = new Map<string, Known>();
-// Videos with a cached summary: their feed tiles are hidden, in this browser only.
-const summarised = new Set<string>();
+// Videos summarised or marked Watched or Not interested: their feed tiles are hidden, in this
+// browser only.
+const hidden = new Set<string>();
 const cfgWaiters = new Map<string, (cfg: InnertubeConfig | null) => void>();
 const niWaiters = new Map<string, (result: NiResult) => void>();
 
@@ -124,6 +127,8 @@ async function markWatched(id: string, button: HTMLButtonElement, label: HTMLEle
     label.textContent = `Error ${status}`;
     button.disabled = false;
   }
+  // A refused request stays for another try; anything else is final.
+  if (button.disabled) setTimeout(() => hideTile(id), HIDE_DELAY_MS);
 }
 
 /** Saves the rejection first, then has YouTube's own menu command sent. */
@@ -272,13 +277,17 @@ send('filter/get', {})
   })
   .catch(() => {});
 
-function markSummarised(id: string): void {
-  summarised.add(id);
+function hideTile(id: string): void {
+  hidden.add(id);
   scheduleScan();
 }
 
 send('summary/ids', {})
-  .then(({ ids }) => ids.forEach(markSummarised))
+  .then(({ ids }) => ids.forEach(hideTile))
+  .catch(() => {});
+
+send('rejected/ids', {})
+  .then(({ ids }) => ids.forEach(hideTile))
   .catch(() => {});
 
 async function ready(): Promise<boolean> {
@@ -322,7 +331,7 @@ async function summarise(id: string, fromTile = false): Promise<void> {
     const cached = await send('summary/get', { id });
     if (stale()) return;
     if (cached && 'summary' in cached) {
-      markSummarised(id);
+      hideTile(id);
       return showSummary(id, cached, fromTile);
     }
 
@@ -340,7 +349,7 @@ async function summarise(id: string, fromTile = false): Promise<void> {
     const result = await send('summary/create', { id, title, channel, transcript });
     if (stale()) return;
     if (result.ok) {
-      markSummarised(id);
+      hideTile(id);
       // New summaries only: reopening a cached one adds nothing.
       addToHistory(id).catch(() => {});
       showSummary(id, result.entry, fromTile, result.warning);
@@ -508,9 +517,9 @@ const hostIds = new WeakMap<HTMLElement, string>();
 const watchedHosts = new WeakMap<Element, { host: HTMLElement; id: string }>();
 
 // Our own attribute, not `hidden`: YouTube's elements set that themselves.
-const SUMMARISED_ATTR = 'data-yts-summarised';
+const HIDDEN_ATTR = 'data-yts-hidden';
 const hideStyle = document.createElement('style');
-hideStyle.textContent = `[${SUMMARISED_ATTR}] { display: none !important; }`;
+hideStyle.textContent = `[${HIDDEN_ATTR}] { display: none !important; }`;
 
 function placeTileButtons(): void {
   if (!hideStyle.isConnected) (document.head ?? document.documentElement).append(hideStyle);
@@ -518,7 +527,7 @@ function placeTileButtons(): void {
     const link = tile.querySelector<HTMLAnchorElement>(SELECTORS.tileLink);
     const id = link ? watchVideoId(link.href) : null;
     // Re-read every scan: a reused tile shows again once it holds another video.
-    tile.toggleAttribute(SUMMARISED_ATTR, id !== null && summarised.has(id));
+    tile.toggleAttribute(HIDDEN_ATTR, id !== null && hidden.has(id));
     let host = tileHosts.get(tile);
     const watched = watchedHosts.get(tile);
     if (watched && watched.id !== id) {

@@ -112,6 +112,8 @@ type Api = {
   };
   'summary/cancel': { req: { id: string }; res: Outcome };
   'rejected/add': { req: VideoMeta; res: Outcome };
+  // Open to content scripts: which videos you marked Watched or Not interested, to hide them.
+  'rejected/ids': { req: object; res: { ids: string[] } };
 };
 
 export type MessageType = keyof Api;

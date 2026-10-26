@@ -322,6 +322,10 @@ async function handle(msg: Message, sender: chrome.runtime.MessageSender): Promi
       return { ok: true };
     case 'rejected/add':
       return addRejected(msg);
+    case 'rejected/ids': {
+      const { rejected } = await chrome.storage.local.get('rejected');
+      return { ids: Object.keys((rejected as Rejected | undefined) ?? {}) };
+    }
   }
 }
 
