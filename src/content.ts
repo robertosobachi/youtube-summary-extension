@@ -8,6 +8,9 @@ import {
   TRANSCRIPT_PATH,
   extractTranscript,
   oembedUrl,
+  playbackNonce,
+  playbackPingUrl,
+  playerResponse,
   transcriptRequest,
   transcriptText,
   watchUrl,
@@ -175,6 +178,19 @@ async function fetchTranscript(id: string, signal: AbortSignal): Promise<string 
   return lines.length ? transcriptText(lines) : null;
 }
 
+/**
+ * With the setting on, sends the player's "playback started" ping from the watch page, which
+ * adds the video to watch history. YouTube doesn't document it, so a failure stays quiet.
+ */
+async function addToHistory(id: string): Promise<void> {
+  if (!(await send('history/get', {})).addToHistory) return;
+  const res = await fetch(watchUrl(id));
+  if (!res.ok) return;
+  const url = playbackPingUrl(playerResponse(await res.text()), id, playbackNonce());
+  // s.youtube.com sends no CORS headers; the response isn't needed.
+  if (url) await fetch(url, { credentials: 'include', mode: 'no-cors' });
+}
+
 const copyAction = (label: string, text: string): PanelAction => ({
   label,
   run: async (button) => {
@@ -325,6 +341,8 @@ async function summarise(id: string, fromTile = false): Promise<void> {
     if (stale()) return;
     if (result.ok) {
       markSummarised(id);
+      // New summaries only: reopening a cached one adds nothing.
+      addToHistory(id).catch(() => {});
       showSummary(id, result.entry, fromTile, result.warning);
     } else panel.error(result.error);
   } catch (err) {

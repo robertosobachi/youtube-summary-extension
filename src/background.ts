@@ -11,6 +11,7 @@ import {
   takeEvents,
 } from './claude';
 import {
+  DEFAULT_ADD_TO_HISTORY,
   DEFAULT_HIDE_PROMOS,
   DEFAULT_LANGS,
   DEFAULT_MAX_AGE_DAYS,
@@ -49,6 +50,7 @@ async function getSettings(): Promise<Settings> {
     langs: DEFAULT_LANGS,
     maxAgeDays: DEFAULT_MAX_AGE_DAYS,
     hidePromos: DEFAULT_HIDE_PROMOS,
+    addToHistory: DEFAULT_ADD_TO_HISTORY,
     ...(settings as Partial<Settings> | undefined),
   };
 }
@@ -66,9 +68,10 @@ function serialised<T>(task: () => Promise<T>): Promise<T> {
   return run;
 }
 
-function view({ apiKey, consent, langs, maxAgeDays, hidePromos }: Settings): SettingsView {
+function view(settings: Settings): SettingsView {
+  const { apiKey, consent, langs, maxAgeDays, hidePromos, addToHistory } = settings;
   const keyHint = apiKey.slice(-4);
-  return { hasKey: Boolean(apiKey), keyHint, consent, langs, maxAgeDays, hidePromos };
+  return { hasKey: Boolean(apiKey), keyHint, consent, langs, maxAgeDays, hidePromos, addToHistory };
 }
 
 async function saveSettings(
@@ -101,6 +104,16 @@ async function savePromos(hidePromos: unknown): Promise<SettingsView> {
     return next;
   });
   await broadcast({ type: 'promos/set', hidePromos: saved.hidePromos });
+  return view(saved);
+}
+
+/** The watch history toggle alone, saved as soon as it changes. Tabs read it per summary. */
+async function saveHistory(addToHistory: unknown): Promise<SettingsView> {
+  const saved = await serialised(async () => {
+    const next = { ...(await getSettings()), addToHistory: addToHistory === true };
+    await chrome.storage.local.set({ settings: next });
+    return next;
+  });
   return view(saved);
 }
 
@@ -290,6 +303,10 @@ async function handle(msg: Message, sender: chrome.runtime.MessageSender): Promi
       return { ready: !summaryBlocker(await getSettings()) };
     case 'promos/save':
       return savePromos(msg.hidePromos);
+    case 'history/save':
+      return saveHistory(msg.addToHistory);
+    case 'history/get':
+      return { addToHistory: (await getSettings()).addToHistory };
     case 'filter/get': {
       const { maxAgeDays, hidePromos } = await getSettings();
       return { maxAgeDays, hidePromos };

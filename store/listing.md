@@ -40,7 +40,7 @@ Copy for the developer dashboard. Keep in step with the manifest and PRIVACY.md.
 **Permission justifications:**
 
 - `storage`: saves the user's settings, API key, cached summaries and videos marked Not interested, on the device only.
-- Host `https://www.youtube.com/*`: the content scripts add the Summarise buttons and drawer, fetch the video transcript and filter the Home feed. YouTube is the only site the extension runs on.
+- Host `https://www.youtube.com/*`: the content scripts add the Summarise buttons and drawer, fetch the video transcript, filter the Home feed and, when the user turns it on, add summarised videos to their YouTube watch history. YouTube is the only site the extension runs on.
 - Host `https://api.anthropic.com/*`: the service worker sends the transcript to Anthropic's Claude API to generate the summary the user asked for, with the user's own API key.
 - Web-accessible `options.html`: the settings page is shown in a frame inside the drawer on YouTube, so the user can set it up without leaving the page.
 - Main-world content script (`page.js`): reads YouTube's page data for the feed tiles, and removes old videos and promos from the Home responses YouTube already requested, before YouTube renders them. Its only requests are YouTube's own Not interested command and, for Watched, the "I've already watched this video" reason, when the user clicks them.

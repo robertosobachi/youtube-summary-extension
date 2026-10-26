@@ -10,6 +10,9 @@ import {
   isHomeResponse,
   navResponse,
   notInterestedCommand,
+  playbackNonce,
+  playbackPingUrl,
+  playerResponse,
   sentFeedbackTokens,
   transcriptParams,
   transcriptText,
@@ -230,5 +233,69 @@ describe('isHomeResponse', () => {
     expect(navResponse({ response: { response: homeBrowse } })).toBe(homeBrowse);
     expect(navResponse({ response: homeBrowse })).toBe(homeBrowse);
     expect(navResponse({ response: { response: transcript } })).toBeNull();
+  });
+});
+
+// The shape of a watch page's inline script, trimmed to the fields the ping reads.
+const PING_BASE =
+  'https://s.youtube.com/api/stats/playback?cl=1&docid=IIsFHQqyMlc&ei=abc&el=detailpage&len=228';
+const player = {
+  playabilityStatus: { status: 'OK' },
+  playbackTracking: { videostatsPlaybackUrl: { baseUrl: PING_BASE } },
+};
+const watchPage = (tail: string) =>
+  `<script nonce="n">var ytInitialPlayerResponse = ${JSON.stringify(player)};${tail}`;
+
+describe('playerResponse', () => {
+  it.each(['var meta = document.createElement("meta");', '</script>'])(
+    'reads the inline player response ending in %s',
+    (tail) => {
+      expect(playerResponse(watchPage(tail))).toEqual(player);
+    },
+  );
+
+  it('is null without one, or when it does not parse', () => {
+    expect(playerResponse('<html></html>')).toBeNull();
+    expect(playerResponse('var ytInitialPlayerResponse = {nope};</script>')).toBeNull();
+  });
+});
+
+describe('playbackNonce', () => {
+  it('makes 16 URL-safe characters', () => {
+    expect(playbackNonce()).toMatch(/^[\w-]{16}$/);
+  });
+
+  it('maps each byte through the low 6 bits', () => {
+    expect(playbackNonce(Uint8Array.from([0, 63, 64, 255]))).toBe('a_a_');
+  });
+});
+
+describe('playbackPingUrl', () => {
+  it('adds ver=2 and the nonce to the playback URL', () => {
+    const url = new URL(playbackPingUrl(player, 'IIsFHQqyMlc', 'nonce')!);
+    expect(url.origin + url.pathname).toBe('https://s.youtube.com/api/stats/playback');
+    expect(url.searchParams.get('ver')).toBe('2');
+    expect(url.searchParams.get('cpn')).toBe('nonce');
+    expect(url.searchParams.get('len')).toBe('228');
+  });
+
+  it('refuses a ping for another video', () => {
+    expect(playbackPingUrl(player, 'dQw4w9WgXcQ', 'nonce')).toBeUndefined();
+  });
+
+  it.each([
+    'https://s.youtube.com.evil.example/api/stats/playback?docid=IIsFHQqyMlc',
+    'http://s.youtube.com/api/stats/playback?docid=IIsFHQqyMlc',
+    'not a url',
+  ])('refuses %s', (baseUrl) => {
+    const other = { playbackTracking: { videostatsPlaybackUrl: { baseUrl } } };
+    expect(playbackPingUrl(other, 'IIsFHQqyMlc', 'nonce')).toBeUndefined();
+  });
+
+  it('is undefined without playback tracking, as for an unplayable video', () => {
+    expect(
+      playbackPingUrl({ playabilityStatus: { status: 'UNPLAYABLE' } }, 'IIsFHQqyMlc', 'n'),
+    ).toBeUndefined();
+    expect(playbackPingUrl(null, 'IIsFHQqyMlc', 'n')).toBeUndefined();
   });
 });

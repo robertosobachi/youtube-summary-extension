@@ -38,13 +38,19 @@ export const DEFAULT_HIDE_PROMOS = false;
 /** youtube.com localStorage key: content.ts mirrors the promo toggle there, '1' for on. */
 export const PROMOS_KEY = 'yts:hidePromos';
 
-/** `consent`: the user agreed to send transcripts to Anthropic, as Web Store policy requires. */
+export const DEFAULT_ADD_TO_HISTORY = false;
+
+/**
+ * `consent`: the user agreed to send transcripts to Anthropic, as Web Store policy requires.
+ * `addToHistory`: new summaries go into YouTube watch history.
+ */
 export type Settings = {
   apiKey: string;
   consent: boolean;
   langs: string[];
   maxAgeDays: number;
   hidePromos: boolean;
+  addToHistory: boolean;
 };
 
 /** What extension pages see of the settings: never the key itself. */
@@ -55,6 +61,7 @@ export type SettingsView = {
   langs: string[];
   maxAgeDays: number;
   hidePromos: boolean;
+  addToHistory: boolean;
 };
 
 /** Why nothing can be sent to Anthropic yet, or null when a summary can go ahead. */
@@ -90,6 +97,10 @@ type Api = {
   'key/status': { req: object; res: { ready: boolean } };
   // Saved on its own as the box is ticked, so open tabs apply it at once.
   'promos/save': { req: { hidePromos: boolean }; res: SettingsView };
+  // Saved on its own as the box is ticked, like the promo toggle.
+  'history/save': { req: { addToHistory: boolean }; res: SettingsView };
+  // Open to content scripts: whether to add a new summary to YouTube watch history.
+  'history/get': { req: object; res: { addToHistory: boolean } };
   // Open to content scripts: the feed filters, which are not private.
   'filter/get': { req: object; res: { maxAgeDays: number; hidePromos: boolean } };
   'summary/get': { req: { id: string }; res: Summary | null };
@@ -114,6 +125,7 @@ export const PRIVILEGED: readonly MessageType[] = [
   'key/test',
   'settings/drawer',
   'promos/save',
+  'history/save',
 ];
 
 /** From the service worker to a content script. */

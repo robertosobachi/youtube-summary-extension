@@ -9,10 +9,11 @@ Triage your YouTube feed: summarise videos with Claude and hide the ones not wor
 - **Summaries:** built from the video's YouTube transcript. Videos without a transcript show a message instead. Each summary has a title, 2-3 sentence summary, main points and a key takeaway, 250 words maximum.
 - **Language:** a transcript in one of your configured languages is summarised in that language, any other in English.
 - **Cache:** summaries are saved locally, so opening the same video again doesn't call the API. When storage is full the oldest summaries are dropped.
-- **Summarised videos:** hidden from the Home and Subscriptions feeds once summarised, in this browser only. Nothing is sent to YouTube. A video comes back if its summary is dropped from the cache. Other open tabs hide it after a reload.
+- **Summarised videos:** hidden from the Home and Subscriptions feeds once summarised, in this browser only. Hiding sends nothing to YouTube. A video comes back if its summary is dropped from the cache. Other open tabs hide it after a reload.
 - **Copy for chat:** copies the title, link, summary and full transcript as a ready-made prompt to paste into any chat.
 - **Not interested:** in the drawer for a Home tile, sends YouTube's own Not interested command for that video and shows YouTube's response status. The video is also recorded locally.
 - **Watched:** a second button on each Home tile, below Summarise. One click sends Not interested, then YouTube's "I've already watched this video" reason, with no summary and no API call. The button shows the result: Done, or where the reason step stopped when only Not interested went through. The reason is matched by its English label, so with YouTube in another language only Not interested is sent.
+- **Add to YouTube history:** optional, off by default. After a new summary, sends the playback ping YouTube's player sends when a video starts, so the video shows in your watch history. It also counts as a view. The ping is read from the video's watch page and isn't documented by YouTube, so it can stop working without notice; a failure never affects the summary. Reopening a cached summary sends nothing.
 - **Cancel:** closing the drawer while a summary is in progress cancels it, and nothing is saved.
 - **Age filter:** hides Home feed videos older than a cut-off before YouTube renders them, so infinite scroll keeps working. Off by default. Ads, Shorts, live streams, premieres without a date and anything unreadable stay. Search, Subscriptions and the watch page are not touched. YouTube shows rounded dates ("1 yr ago" covers 12 to 23 months), so the cut-off works in those steps: a month counts as 30 days and a year as 365. Dates are read in English only.
 - **YouTube featured promos:** hides YouTube's own promo sections, such as "Get more from memberships", Premium trailers and Premium offers, from the feeds. Off by default. A toggle in the settings, saved and applied to open YouTube tabs as soon as you change it. Matched by YouTube's renderer type, so in any language: removed from Home responses before YouTube renders them, and hidden by CSS if already on the page. After switching it off, reload YouTube to bring back promos already removed.
@@ -38,6 +39,7 @@ With no API key saved, the settings open in the drawer on YouTube: once when the
 - **Summary languages:** tick one or more. Defaults to English.
 - **Hide Home videos older than:** 1 week to 2 years, or Off. Applies to videos loaded after saving; reload YouTube to refilter the ones already shown.
 - **Hide YouTube featured promos:** saved as soon as you tick or untick it, no Save needed.
+- **Add summarised videos to YouTube history:** saved as soon as you tick or untick it, too.
 
 Click Save. Test key checks the key against the API without generating a summary.
 
@@ -63,6 +65,7 @@ Nothing is sent to Anthropic for summaries until you tick Send transcripts to An
 - The transcript request and, when a title isn't already known, an oEmbed lookup for title and channel. Both are same-origin requests from the YouTube page.
 - Nothing extra for the age and promo filters: they remove items from Home responses YouTube already requested, before YouTube renders them.
 - The Not interested command, sent through YouTube's own page code when you click Not interested or Watched. For Watched, also the "I've already watched this video" reason from YouTube's response to it.
+- With Add summarised videos to YouTube history ticked, after each new summary: the video's watch page, then the `s.youtube.com/api/stats/playback` ping from its player response, with your YouTube cookies. This adds the video to your watch history and counts as a view.
 
 The extension makes no other network requests.
 

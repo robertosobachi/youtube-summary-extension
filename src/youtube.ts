@@ -403,6 +403,47 @@ export function removePromos(data: unknown): number {
   return removed;
 }
 
+// The watch page's inline player response. /youtubei/v1/player answers UNPLAYABLE without the
+// player's attestation token, so the page is the source, as it is for yt-dlp.
+const PLAYER_RESPONSE = /ytInitialPlayerResponse\s*=\s*(\{.+?\});\s*(?:var\s|<\/script>)/s;
+const PLAYBACK_URL = ['playbackTracking', 'videostatsPlaybackUrl', 'baseUrl'];
+const CPN_ALPHABET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_';
+
+/** The `ytInitialPlayerResponse` in a watch page's HTML, or null if none parses. */
+export function playerResponse(html: string): unknown {
+  const match = PLAYER_RESPONSE.exec(html);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[1]);
+  } catch {
+    return null;
+  }
+}
+
+/** A client playback nonce: 16 characters, as the player makes one per playback. */
+export const playbackNonce = (bytes = crypto.getRandomValues(new Uint8Array(16))): string =>
+  Array.from(bytes, (byte) => CPN_ALPHABET[byte & 63]).join('');
+
+/**
+ * The player's "playback started" ping for `id`, which is what adds a video to watch history.
+ * Undefined unless the URL is a youtube.com one for this video.
+ */
+export function playbackPingUrl(player: unknown, id: string, cpn: string): string | undefined {
+  const base = at(player, PLAYBACK_URL);
+  if (typeof base !== 'string') return undefined;
+  let url: URL;
+  try {
+    url = new URL(base);
+  } catch {
+    return undefined;
+  }
+  const ours = url.protocol === 'https:' && /(^|\.)youtube\.com$/.test(url.hostname);
+  if (!ours || url.searchParams.get('docid') !== id) return undefined;
+  url.searchParams.set('ver', '2');
+  url.searchParams.set('cpn', cpn);
+  return url.href;
+}
+
 /** Same-origin oEmbed, as the CLI uses for titles: no auth, public data only. */
 export const oembedUrl = (id: string): string =>
   `/oembed?format=json&url=${encodeURIComponent(watchUrl(id))}`;
