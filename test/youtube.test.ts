@@ -6,12 +6,12 @@ import transcript from '../fixtures/transcript.json';
 import {
   commandFeedbackToken,
   extractTranscript,
+  historyPingUrls,
   homeTiles,
   isHomeResponse,
   navResponse,
   notInterestedCommand,
   playbackNonce,
-  playbackPingUrl,
   playerResponse,
   sentFeedbackTokens,
   transcriptParams,
@@ -237,11 +237,15 @@ describe('isHomeResponse', () => {
 });
 
 // The shape of a watch page's inline script, trimmed to the fields the ping reads.
-const PING_BASE =
-  'https://s.youtube.com/api/stats/playback?cl=1&docid=IIsFHQqyMlc&ei=abc&el=detailpage&len=228';
+const PING_BASE = 'https://s.youtube.com/api/stats/playback?cl=1&docid=IIsFHQqyMlc&ei=abc&len=228';
+const WATCHTIME_BASE =
+  'https://s.youtube.com/api/stats/watchtime?cl=1&docid=IIsFHQqyMlc&ei=abc&el=shorts&len=228';
 const player = {
   playabilityStatus: { status: 'OK' },
-  playbackTracking: { videostatsPlaybackUrl: { baseUrl: PING_BASE } },
+  playbackTracking: {
+    videostatsPlaybackUrl: { baseUrl: PING_BASE },
+    videostatsWatchtimeUrl: { baseUrl: WATCHTIME_BASE },
+  },
 };
 const watchPage = (tail: string) =>
   `<script nonce="n">var ytInitialPlayerResponse = ${JSON.stringify(player)};${tail}`;
@@ -270,17 +274,42 @@ describe('playbackNonce', () => {
   });
 });
 
-describe('playbackPingUrl', () => {
-  it('adds ver=2 and the nonce to the playback URL', () => {
-    const url = new URL(playbackPingUrl(player, 'IIsFHQqyMlc', 'nonce')!);
-    expect(url.origin + url.pathname).toBe('https://s.youtube.com/api/stats/playback');
-    expect(url.searchParams.get('ver')).toBe('2');
-    expect(url.searchParams.get('cpn')).toBe('nonce');
-    expect(url.searchParams.get('len')).toBe('228');
+describe('historyPingUrls', () => {
+  const pings = (p: unknown, id = 'IIsFHQqyMlc') =>
+    historyPingUrls(p, id, 'nonce').map((href) => new URL(href));
+
+  it('sends the playback ping, then the watch-time one', () => {
+    expect(pings(player).map((url) => url.origin + url.pathname)).toEqual([
+      'https://s.youtube.com/api/stats/playback',
+      'https://s.youtube.com/api/stats/watchtime',
+    ]);
   });
 
-  it('refuses a ping for another video', () => {
-    expect(playbackPingUrl(player, 'dQw4w9WgXcQ', 'nonce')).toBeUndefined();
+  it('reports both as watched from the watch page to just before the end', () => {
+    for (const url of pings(player)) {
+      expect(url.searchParams.get('ver')).toBe('2');
+      expect(url.searchParams.get('cpn')).toBe('nonce');
+      expect(url.searchParams.get('len')).toBe('228');
+      expect(url.searchParams.get('cmt')).toBe('227');
+      expect(url.searchParams.get('el')).toBe('detailpage');
+    }
+  });
+
+  it('gives only the watch-time ping a start and end', () => {
+    const [playback, watchtime] = pings(player);
+    expect(playback.searchParams.has('st')).toBe(false);
+    expect(watchtime.searchParams.get('st')).toBe('0');
+    expect(watchtime.searchParams.get('et')).toBe('227');
+  });
+
+  it('falls back to a length of 1.5 seconds without len', () => {
+    const baseUrl = 'https://s.youtube.com/api/stats/playback?docid=IIsFHQqyMlc';
+    const [url] = pings({ playbackTracking: { videostatsPlaybackUrl: { baseUrl } } });
+    expect(url.searchParams.get('cmt')).toBe('0.5');
+  });
+
+  it('refuses pings for another video', () => {
+    expect(pings(player, 'dQw4w9WgXcQ')).toEqual([]);
   });
 
   it.each([
@@ -289,13 +318,19 @@ describe('playbackPingUrl', () => {
     'not a url',
   ])('refuses %s', (baseUrl) => {
     const other = { playbackTracking: { videostatsPlaybackUrl: { baseUrl } } };
-    expect(playbackPingUrl(other, 'IIsFHQqyMlc', 'nonce')).toBeUndefined();
+    expect(pings(other)).toEqual([]);
+    const watchtime = {
+      playbackTracking: { ...player.playbackTracking, videostatsWatchtimeUrl: { baseUrl } },
+    };
+    expect(pings(watchtime).map((url) => url.pathname)).toEqual(['/api/stats/playback']);
   });
 
-  it('is undefined without playback tracking, as for an unplayable video', () => {
-    expect(
-      playbackPingUrl({ playabilityStatus: { status: 'UNPLAYABLE' } }, 'IIsFHQqyMlc', 'n'),
-    ).toBeUndefined();
-    expect(playbackPingUrl(null, 'IIsFHQqyMlc', 'n')).toBeUndefined();
+  it('sends neither without a playback ping, as for an unplayable video', () => {
+    expect(pings({ playabilityStatus: { status: 'UNPLAYABLE' } })).toEqual([]);
+    expect(pings(null)).toEqual([]);
+    const watchtimeOnly = {
+      playbackTracking: { videostatsWatchtimeUrl: { baseUrl: WATCHTIME_BASE } },
+    };
+    expect(pings(watchtimeOnly)).toEqual([]);
   });
 });

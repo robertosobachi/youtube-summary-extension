@@ -7,9 +7,9 @@ import {
   SELECTORS,
   TRANSCRIPT_PATH,
   extractTranscript,
+  historyPingUrls,
   oembedUrl,
   playbackNonce,
-  playbackPingUrl,
   playerResponse,
   transcriptRequest,
   transcriptText,
@@ -184,16 +184,17 @@ async function fetchTranscript(id: string, signal: AbortSignal): Promise<string 
 }
 
 /**
- * With the setting on, sends the player's "playback started" ping from the watch page, which
- * adds the video to watch history. YouTube doesn't document it, so a failure stays quiet.
+ * With the setting on, sends the player's playback and watch-time pings from the watch page,
+ * which add the video to watch history. YouTube doesn't document them, so a failure stays quiet.
  */
 async function addToHistory(id: string): Promise<void> {
   if (!(await send('history/get', {})).addToHistory) return;
   const res = await fetch(watchUrl(id));
   if (!res.ok) return;
-  const url = playbackPingUrl(playerResponse(await res.text()), id, playbackNonce());
-  // s.youtube.com sends no CORS headers; the response isn't needed.
-  if (url) await fetch(url, { credentials: 'include', mode: 'no-cors' });
+  const urls = historyPingUrls(playerResponse(await res.text()), id, playbackNonce());
+  // In order, as the player sends them. s.youtube.com sends no CORS headers; the response
+  // isn't needed.
+  for (const url of urls) await fetch(url, { credentials: 'include', mode: 'no-cors' });
 }
 
 const copyAction = (label: string, text: string): PanelAction => ({
