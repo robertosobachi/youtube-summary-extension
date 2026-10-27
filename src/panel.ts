@@ -85,17 +85,24 @@ header {
 .channel { display: block; font-size: 12px; font-weight: 400; }
 .title a { color: var(--yt-spec-text-primary, var(--fg)); font-size: 15px; text-decoration: none; }
 .title a:hover { text-decoration: underline; }
+/* --yts-text scales the summary text only; the header and footer keep their sizes. */
 .body {
   flex: 1;
   overflow-y: auto;
   padding: 0 16px 16px;
+  font-size: calc(14px * var(--yts-text, 1));
 }
 .body.framed { padding: 0; overflow: hidden; }
 iframe { display: block; width: 100%; height: 100%; border: 0; }
-.body h2 { font-size: 20px; line-height: 1.3; font-weight: 700; margin: 8px 0 4px; }
+.body h2 {
+  font-size: calc(20px * var(--yts-text, 1));
+  line-height: 1.3;
+  font-weight: 700;
+  margin: 8px 0 4px;
+}
 .body h3 {
   margin: 20px 0 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--yts-text, 1));
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -105,7 +112,7 @@ iframe { display: block; width: 100%; height: 100%; border: 0; }
 .body ul { margin: 4px 0; padding-left: 20px; }
 .body li { margin: 6px 0; }
 .body li::marker { color: var(--accent); }
-section:first-of-type p { font-size: 15px; }
+section:first-of-type p { font-size: calc(15px * var(--yts-text, 1)); }
 /* The last part (Key takeaway) as a callout. */
 section:last-of-type:not(:first-of-type) {
   margin-top: 20px;
@@ -143,6 +150,19 @@ footer button:first-child {
 }
 footer button:first-child:hover { opacity: 0.85; }
 .close { padding: 0; width: 36px; flex: none; background: transparent; font-size: 20px; }
+.sizes { display: flex; flex: none; align-items: center; height: 36px; }
+.sizes[hidden] { display: none; }
+.sizes button {
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--yt-spec-text-secondary, var(--muted));
+  font-size: 13px;
+}
+.sizes button:hover:not(:disabled) { background: var(--yt-spec-button-chip-background-hover, var(--chip-hover)); }
+.sizes button:disabled { opacity: 0.35; }
 `;
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -224,6 +244,27 @@ function saveWidth(width: number | null): void {
   }
 }
 
+const TEXT_KEY = 'yts-panel-text';
+const TEXT_SIZES = [0.9, 1, 1.15, 1.3, 1.5, 1.75];
+
+/** Same storage as the width: an unknown value means the default size. */
+function savedText(): number {
+  try {
+    const size = Number(localStorage.getItem(TEXT_KEY));
+    return TEXT_SIZES.includes(size) ? size : 1;
+  } catch {
+    return 1;
+  }
+}
+
+function saveText(size: number): void {
+  try {
+    localStorage.setItem(TEXT_KEY, String(size));
+  } catch {
+    // Not kept: the drawer opens at the default size next time.
+  }
+}
+
 /** `onClose` runs when you close the drawer yourself, not when the code closes it. */
 export function createPanel(onClose: () => void) {
   const host = document.createElement('yts-panel');
@@ -232,17 +273,23 @@ export function createPanel(onClose: () => void) {
   const drawer = el('div', 'drawer');
   const header = el('header');
   const title = el('h1', 'title');
+  const sizes = el('div', 'sizes');
+  const smaller = el('button', undefined, 'A−');
+  const larger = el('button', undefined, 'A+');
   const close = el('button', 'close', '×');
   const body = el('div', 'body');
   const footer = el('footer');
   const resize = el('div', 'resize');
+  smaller.title = 'Smaller text';
+  larger.title = 'Larger text';
   close.title = 'Close';
   resize.title = 'Drag to resize, double-click to reset';
   close.addEventListener('click', () => {
     host.remove();
     onClose();
   });
-  header.append(title, close);
+  sizes.append(smaller, larger);
+  header.append(title, sizes, close);
   drawer.append(header, body, footer);
   root.append(style, resize, drawer);
 
@@ -273,8 +320,26 @@ export function createPanel(onClose: () => void) {
     saveWidth(null);
   });
 
+  let text = savedText();
+  const setText = (next: number): void => {
+    text = next;
+    host.style.setProperty('--yts-text', String(next));
+    smaller.disabled = next === TEXT_SIZES[0];
+    larger.disabled = next === TEXT_SIZES[TEXT_SIZES.length - 1];
+  };
+  setText(text);
+  const stepText = (by: number): void => {
+    const next = TEXT_SIZES[TEXT_SIZES.indexOf(text) + by];
+    if (next === undefined) return;
+    setText(next);
+    saveText(next);
+  };
+  smaller.addEventListener('click', () => stepText(-1));
+  larger.addEventListener('click', () => stepText(1));
+
   const open = (heading: string): void => {
     title.textContent = heading;
+    sizes.hidden = false;
     body.classList.remove('framed');
     body.replaceChildren();
     footer.replaceChildren();
@@ -310,6 +375,7 @@ export function createPanel(onClose: () => void) {
     /** An extension page in a frame: its own process, so the page can't read what you type. */
     frame(heading: string, src: string): void {
       open(heading);
+      sizes.hidden = true;
       body.classList.add('framed');
       const frame = el('iframe');
       frame.src = src;
