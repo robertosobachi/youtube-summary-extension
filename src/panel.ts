@@ -13,7 +13,7 @@ const CSS = `
   right: 0;
   bottom: 0;
   z-index: 2100;
-  width: min(var(--yts-width, 420px), 100vw);
+  width: min(var(--yts-width, 420px), 75vw);
   --accent: #c15f3c;
   /* Fallbacks for YouTube's own colours, which don't always reach the drawer. */
   --bg: #fff;
@@ -308,7 +308,7 @@ export function createPanel(onClose: () => void) {
   });
   resize.addEventListener('pointermove', (event) => {
     if (!resize.hasPointerCapture(event.pointerId)) return;
-    const max = Math.max(MIN_WIDTH, Math.round(innerWidth * 0.9));
+    const max = Math.max(MIN_WIDTH, Math.round(innerWidth * 0.75));
     setWidth(Math.min(max, Math.max(MIN_WIDTH, Math.round(innerWidth - event.clientX))));
   });
   resize.addEventListener('lostpointercapture', () => {
