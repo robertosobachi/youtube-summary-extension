@@ -40,9 +40,24 @@ export const PROMOS_KEY = 'yts:hidePromos';
 
 export const DEFAULT_ADD_TO_HISTORY = false;
 
+/** The watch page speed button's fast rate. YouTube's own steps, so the player keeps them. */
+export const SPEED_OPTIONS = [1.25, 1.5, 1.75, 2];
+
+export const DEFAULT_SPEED = 1.5;
+
+/** A fast rate the options offer. Anything else is the default. */
+export function parseSpeed(raw: unknown): number {
+  const speed = Number(raw);
+  return SPEED_OPTIONS.includes(speed) ? speed : DEFAULT_SPEED;
+}
+
+/** The speed button's next rate: normal goes fast, anything else back to normal. */
+export const toggledRate = (current: number, fast: number): number => (current === 1 ? fast : 1);
+
 /**
  * `consent`: the user agreed to send transcripts to Anthropic, as Web Store policy requires.
  * `addToHistory`: new summaries go into YouTube watch history.
+ * `speed`: the fast rate of the watch page speed button.
  */
 export type Settings = {
   apiKey: string;
@@ -51,6 +66,7 @@ export type Settings = {
   maxAgeDays: number;
   hidePromos: boolean;
   addToHistory: boolean;
+  speed: number;
 };
 
 /** What extension pages see of the settings: never the key itself. */
@@ -62,6 +78,7 @@ export type SettingsView = {
   maxAgeDays: number;
   hidePromos: boolean;
   addToHistory: boolean;
+  speed: number;
 };
 
 /** Why nothing can be sent to Anthropic yet, or null when a summary can go ahead. */
@@ -101,6 +118,10 @@ type Api = {
   'history/save': { req: { addToHistory: boolean }; res: SettingsView };
   // Open to content scripts: whether to add a new summary to YouTube watch history.
   'history/get': { req: object; res: { addToHistory: boolean } };
+  // Saved on its own as it's picked, and handed to open tabs for the button's label.
+  'speed/save': { req: { speed: number }; res: SettingsView };
+  // Open to content scripts: the speed button's fast rate.
+  'speed/get': { req: object; res: { speed: number } };
   // Open to content scripts: the feed filters, which are not private.
   'filter/get': { req: object; res: { maxAgeDays: number; hidePromos: boolean } };
   'summary/get': { req: { id: string }; res: Summary | null };
@@ -128,13 +149,15 @@ export const PRIVILEGED: readonly MessageType[] = [
   'settings/drawer',
   'promos/save',
   'history/save',
+  'speed/save',
 ];
 
 /** From the service worker to a content script. */
 export type TabMessage =
   | { type: 'settings/open' }
   | { type: 'filter/set'; maxAgeDays: number }
-  | { type: 'promos/set'; hidePromos: boolean };
+  | { type: 'promos/set'; hidePromos: boolean }
+  | { type: 'speed/set'; speed: number };
 
 export function send<K extends MessageType>(type: K, req: Api[K]['req']): Promise<Reply<K>> {
   // A reloaded extension leaves the scripts already in open tabs without chrome.runtime.
@@ -183,7 +206,9 @@ export type PageMessage =
 export type ContentMessage =
   | { type: 'cfg?'; nonce: string }
   // `watched`: follow Not interested with the "I've already watched" reason.
-  | { type: 'ni'; id: string; watched?: boolean };
+  | { type: 'ni'; id: string; watched?: boolean }
+  // Set through YouTube's player, so its own menu shows the rate.
+  | { type: 'speed'; rate: number };
 
 export function isFrom<T>(event: MessageEvent, source: string): event is MessageEvent<T> {
   return (

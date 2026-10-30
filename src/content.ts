@@ -1,7 +1,17 @@
 // ISOLATED world: buttons, the drawer and youtube.com fetches. Claude calls and storage go
 // through the service worker; page data comes from page.ts by postMessage.
 import { chatText } from './chat';
-import { AGE_KEY, CONTENT_SOURCE, PAGE_SOURCE, PROMOS_KEY, isFrom, post, send } from './messages';
+import {
+  AGE_KEY,
+  CONTENT_SOURCE,
+  DEFAULT_SPEED,
+  PAGE_SOURCE,
+  PROMOS_KEY,
+  isFrom,
+  post,
+  send,
+  toggledRate,
+} from './messages';
 import { createPanel } from './panel';
 import {
   SELECTORS,
@@ -53,6 +63,7 @@ window.addEventListener('message', (event) => {
     if (msg.video) remember(msg.video);
     panel.close();
     promptForKey();
+    showSpeed();
     scheduleScan();
   } else if (msg.type === 'tiles') {
     msg.tiles.forEach(remember);
@@ -233,6 +244,9 @@ chrome.runtime.onMessage.addListener((msg: TabMessage, sender, sendResponse) => 
     mirrorFilter(msg.maxAgeDays);
   } else if (msg.type === 'promos/set') {
     applyPromos(msg.hidePromos);
+  } else if (msg.type === 'speed/set') {
+    fastSpeed = msg.speed;
+    showSpeed();
   } else if (msg.type === 'settings/open') {
     // Like the close button: a summary still on its way mustn't replace the settings.
     cancel();
@@ -427,10 +441,33 @@ function watchedIcon(): SVGSVGElement {
   return svg;
 }
 
+/** A speedometer: the speed button. */
+function speedIcon(): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  const dial = document.createElementNS(SVG_NS, 'path');
+  dial.setAttribute('d', 'M3 18a9 9 0 1 1 18 0');
+  dial.setAttribute('fill', 'none');
+  dial.setAttribute('stroke', 'currentColor');
+  dial.setAttribute('stroke-width', '2.2');
+  dial.setAttribute('stroke-linecap', 'round');
+  const needle = document.createElementNS(SVG_NS, 'path');
+  needle.setAttribute('d', 'M12 18l4.5-6');
+  needle.setAttribute('fill', 'none');
+  needle.setAttribute('stroke', 'currentColor');
+  needle.setAttribute('stroke-width', '2.2');
+  needle.setAttribute('stroke-linecap', 'round');
+  svg.append(dial, needle);
+  return svg;
+}
+
 type ButtonOptions = {
   /** Row on the thumbnail, from the top; without it, an inline button. */
   overlayRow?: number;
   icon?: () => SVGSVGElement;
+  /** Gets the button and its label once, for a button that updates outside its clicks. */
+  bind?: (button: HTMLButtonElement, label: HTMLElement) => void;
 };
 
 // A small closed-shadow host for our own buttons, so YouTube's CSS can't reach them and
@@ -438,7 +475,7 @@ type ButtonOptions = {
 function buttonHost(
   label: string,
   onClick: (button: HTMLButtonElement, label: HTMLElement) => void,
-  { overlayRow, icon = summaryIcon }: ButtonOptions = {},
+  { overlayRow, icon = summaryIcon, bind }: ButtonOptions = {},
 ): HTMLElement {
   const host = document.createElement('yts-button');
   const root = host.attachShadow({ mode: 'closed' });
@@ -448,11 +485,13 @@ function buttonHost(
       all: initial; display: inline-flex; align-items: center; align-self: center; margin: 0 8px 8px 0;
       /* Fallbacks for YouTube's own colours, which don't always reach the button. */
       --fg: #0f0f0f;
+      --bg: #fff;
       --chip: rgba(0, 0, 0, 0.05);
       --chip-hover: rgba(0, 0, 0, 0.1);
     }
     :host-context(html[dark]) {
       --fg: #f1f1f1;
+      --bg: #0f0f0f;
       --chip: rgba(255, 255, 255, 0.1);
       --chip-hover: rgba(255, 255, 255, 0.2);
     }
@@ -467,6 +506,11 @@ function buttonHost(
     }
     svg { width: 18px; height: 18px; flex: none; color: #d97757; }
     button:hover { background: var(--yt-spec-button-chip-background-hover, var(--chip-hover)); }
+    /* On, like YouTube's own toggled chips. After :hover, so hovering keeps it. */
+    button[aria-pressed='true'] {
+      background: var(--yt-spec-text-primary, var(--fg));
+      color: var(--yt-spec-base-background, var(--bg));
+    }
     button:active { transform: scale(0.95); }
     button:focus-visible { outline: 2px solid var(--yt-spec-call-to-action, #065fd4); outline-offset: 2px; }
     ${overlayRow === undefined ? '' : overlayCss(overlayRow)}
@@ -484,15 +528,50 @@ function buttonHost(
     onClick(button, text);
   });
   root.append(style, button);
+  bind?.(button, text);
   return host;
 }
 
 let watchButton: HTMLElement | null = null;
+let speedButton: HTMLElement | null = null;
+// The fast rate, from the settings, and the speed button's parts to show it and its state.
+let fastSpeed = DEFAULT_SPEED;
+let speedParts: { button: HTMLButtonElement; label: HTMLElement } | null = null;
+
+const playerVideo = (): HTMLVideoElement | null =>
+  document.querySelector<HTMLVideoElement>(`${SELECTORS.player} video`);
+
+/** The fast rate as the label, pressed while the player runs at anything but normal. */
+function showSpeed(): void {
+  if (!speedParts) return;
+  const { button, label } = speedParts;
+  label.textContent = `${fastSpeed}x`;
+  button.setAttribute('aria-label', `${fastSpeed}x speed`);
+  button.setAttribute('aria-pressed', String((playerVideo()?.playbackRate ?? 1) !== 1));
+}
+
+// The player's video can be swapped, and ratechange doesn't bubble: capture catches any.
+// It also follows YouTube's own speed menu and shortcuts.
+document.addEventListener('ratechange', showSpeed, true);
+
+send('speed/get', {})
+  .then(({ speed }) => {
+    fastSpeed = speed;
+    showSpeed();
+  })
+  .catch(() => {});
+
+/** Normal to fast, anything else back to normal. page.ts sets it through the player. */
+function toggleSpeed(): void {
+  const rate = toggledRate(playerVideo()?.playbackRate ?? 1, fastSpeed);
+  post(CONTENT_SOURCE, { type: 'speed', rate });
+}
 
 function placeWatchButton(): void {
   const onWatch = watchVideoId(location.href) !== null;
   if (!onWatch) {
     watchButton?.remove();
+    speedButton?.remove();
     return;
   }
   const target = SELECTORS.watchActions
@@ -500,7 +579,7 @@ function placeWatchButton(): void {
     .find(Boolean);
   if (!target) return;
   // A fallback container can render before the menu; move up once the better one appears.
-  if (watchButton?.parentElement === target) return;
+  if (watchButton?.parentElement === target && speedButton?.parentElement === target) return;
   // The id is read at click time: YouTube keeps the same page elements across videos.
   watchButton ??= buttonHost('Summarise', () => {
     const id = watchVideoId(location.href);
@@ -508,7 +587,15 @@ function placeWatchButton(): void {
   });
   // Just before Like, as a sibling: inside #top-level-buttons-computed YouTube would wipe it.
   const before = target.querySelector(':scope > #top-level-buttons-computed, :scope > #menu');
+  speedButton ??= buttonHost(`${fastSpeed}x`, toggleSpeed, {
+    icon: speedIcon,
+    bind: (button, label) => {
+      speedParts = { button, label };
+    },
+  });
   target.insertBefore(watchButton, before);
+  target.insertBefore(speedButton, before);
+  showSpeed();
 }
 
 // Tiles are reused across SPA navigations, so each scan re-reads the tile's video id.

@@ -1,4 +1,4 @@
-import { LANGS, MAX_AGE_OPTIONS, send } from './messages';
+import { LANGS, MAX_AGE_OPTIONS, SPEED_OPTIONS, send } from './messages';
 import type { SettingsView } from './messages';
 
 // Framed in the YouTube drawer, which has its own heading. In its own tab, it asks to move
@@ -24,6 +24,7 @@ const langsList = document.querySelector<HTMLDivElement>('#langs .list')!;
 const maxAgeSelect = document.querySelector<HTMLSelectElement>('#max-age')!;
 const hidePromosBox = document.querySelector<HTMLInputElement>('#hide-promos')!;
 const addToHistoryBox = document.querySelector<HTMLInputElement>('#add-to-history')!;
+const speedSelect = document.querySelector<HTMLSelectElement>('#speed')!;
 const testButton = document.querySelector<HTMLButtonElement>('#test')!;
 const status = document.querySelector<HTMLOutputElement>('#status')!;
 
@@ -37,12 +38,14 @@ function show(settings: SettingsView): void {
   savedMaxAge = settings.maxAgeDays;
   hidePromosBox.checked = settings.hidePromos;
   addToHistoryBox.checked = settings.addToHistory;
+  speedSelect.value = String(settings.speed);
 }
 
 // To say when a reload is needed: the cut-off only reaches responses loaded after saving.
 let savedMaxAge: number | null = null;
 
 for (const { label, days } of MAX_AGE_OPTIONS) maxAgeSelect.add(new Option(label, String(days)));
+for (const speed of SPEED_OPTIONS) speedSelect.add(new Option(`${speed}x`, String(speed)));
 
 const langName = new Intl.DisplayNames(['en'], { type: 'language', fallback: 'code' });
 
@@ -125,6 +128,13 @@ addToHistoryBox.addEventListener('change', async () => {
       : 'New summaries stay out of YouTube history.',
     true,
   );
+});
+
+// Saved on its own as well: open tabs update the button's label at once.
+speedSelect.addEventListener('change', async () => {
+  const { speed } = await send('speed/save', { speed: Number(speedSelect.value) });
+  speedSelect.value = String(speed);
+  report(`The speed button plays at ${speed}x.`, true);
 });
 
 testButton.addEventListener('click', async () => {

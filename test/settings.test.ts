@@ -2,10 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { errorMessage } from '../src/claude';
 import {
   DEFAULT_MAX_AGE_DAYS,
+  DEFAULT_SPEED,
   MAX_AGE_OPTIONS,
+  SPEED_OPTIONS,
   normaliseLangs,
   parseMaxAgeDays,
+  parseSpeed,
   summaryBlocker,
+  toggledRate,
 } from '../src/messages';
 
 describe('normaliseLangs', () => {
@@ -38,6 +42,38 @@ describe('parseMaxAgeDays', () => {
 
   it('offers the default', () => {
     expect(MAX_AGE_OPTIONS.map((o) => o.days)).toContain(DEFAULT_MAX_AGE_DAYS);
+  });
+});
+
+describe('parseSpeed', () => {
+  it('offers the default', () => {
+    expect(SPEED_OPTIONS).toContain(DEFAULT_SPEED);
+  });
+
+  it.each([undefined, null, '', 'abc', 0, 1, 3, NaN])('falls back to default for %j', (raw) => {
+    expect(parseSpeed(raw)).toBe(DEFAULT_SPEED);
+  });
+
+  it.each([
+    [1.25, 1.25],
+    ['1.75', 1.75],
+    [2, 2],
+  ])('reads %j as %j', (raw, speed) => {
+    expect(parseSpeed(raw)).toBe(speed);
+  });
+});
+
+describe('toggledRate', () => {
+  it('goes fast from normal', () => {
+    expect(toggledRate(1, 1.5)).toBe(1.5);
+  });
+
+  it('goes back to normal from fast', () => {
+    expect(toggledRate(1.5, 1.5)).toBe(1);
+  });
+
+  it("goes back to normal from a rate set in YouTube's own menu", () => {
+    expect(toggledRate(2, 1.5)).toBe(1);
   });
 });
 

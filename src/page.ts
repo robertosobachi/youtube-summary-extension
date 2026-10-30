@@ -3,7 +3,7 @@
 // removing videos older than the age cut-off and YouTube featured promos from Home responses
 // before YouTube renders them, YouTube's own Not interested command and, for Watched, the
 // "I've already watched" reason YouTube offers after it, both dispatched through YouTube's
-// own router.
+// own router, and the watch page speed button's rate, set through YouTube's player.
 import {
   AGE_KEY,
   CONTENT_SOURCE,
@@ -264,6 +264,18 @@ async function notInterested(id: string, watched = false): Promise<void> {
   post(PAGE_SOURCE, { type: 'ni-result', id, sent: true, status: niStatus, reason });
 }
 
+type Player = Element & { setPlaybackRate?: (rate: number) => void };
+
+/** Through the player, not the video element: YouTube would put its own rate back. */
+function setSpeed(rate: unknown): void {
+  if (typeof rate !== 'number' || !Number.isFinite(rate)) return;
+  try {
+    document.querySelector<Player>(SELECTORS.player)?.setPlaybackRate?.(rate);
+  } catch {
+    // A player that changed shape leaves the speed as it was.
+  }
+}
+
 trapInitialData();
 tapFetch();
 
@@ -274,6 +286,8 @@ window.addEventListener('message', (event) => {
     post(PAGE_SOURCE, { type: 'cfg', nonce: msg.nonce, cfg: innertubeConfig() });
   } else if (msg.type === 'ni') {
     notInterested(msg.id, msg.watched);
+  } else if (msg.type === 'speed') {
+    setSpeed(msg.rate);
   }
 });
 

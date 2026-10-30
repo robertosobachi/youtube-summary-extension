@@ -8,6 +8,8 @@ const isObject = (v: unknown): v is Json => typeof v === 'object' && v !== null;
 export const SELECTORS = {
   /** YouTube's app element, which routes `yt-action` events. */
   app: 'ytd-app',
+  /** The watch page player, whose `setPlaybackRate` keeps its own speed menu in step. */
+  player: '#movie_player',
   /** Where the watch page Summarise button goes, first match wins. */
   watchActions: [
     // The flex row holding Like/Share; #actions-inner stacks #menu on its own line.
