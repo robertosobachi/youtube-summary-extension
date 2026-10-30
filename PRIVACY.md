@@ -1,6 +1,6 @@
 # Refeed for YouTube privacy policy
 
-Effective 26 October 2026.
+Effective 30 October 2026.
 
 Refeed for YouTube is a Chrome extension that summarises YouTube videos with Anthropic's Claude API and hides videos you don't want to see from the YouTube feeds. It has no server of its own. The developer receives no data from it.
 
@@ -10,7 +10,7 @@ Refeed for YouTube is a Chrome extension that summarises YouTube videos with Ant
 - **Video details:** title, channel name and transcript of the videos you summarise.
 - **Summaries** generated for those videos.
 - **Video ids** of videos you mark Not interested or Watched, with their title and channel.
-- **Settings:** summary languages, the age cut-off, the promo toggle and the watch history toggle.
+- **Settings:** summary languages, the age cut-off, the promo toggle and the fast playback speed.
 
 ## Where it is stored
 
@@ -21,7 +21,7 @@ Refeed for YouTube is a Chrome extension that summarises YouTube videos with Ant
 ## What is sent, and to whom
 
 - **Anthropic (api.anthropic.com):** when you click Summarise and no saved summary exists, the video's title, channel name, transcript and a language instruction are sent with your API key. This happens only after you tick Send transcripts to Anthropic in the settings. Test key sends only your key. Anthropic's handling of this data is covered by [its own policies](https://www.anthropic.com/legal/privacy), and usage is billed to your Anthropic account.
-- **YouTube (youtube.com):** the transcript request and, when needed, a title lookup, both from the YouTube page you are on. When you click Not interested or Watched, YouTube's own Not interested command for that video. With Add summarised videos to YouTube history ticked, after each new summary: the video's watch page, then the playback and watch-time pings YouTube's player sends, which add it to your watch history and count as a view.
+- **YouTube (youtube.com):** the transcript request and, when needed, a title lookup, both from the YouTube page you are on. When you click Not interested or Watched, YouTube's own Not interested command for that video.
 
 The extension makes no other network requests. There is no analytics, tracking or advertising.
 

@@ -38,8 +38,6 @@ export const DEFAULT_HIDE_PROMOS = false;
 /** youtube.com localStorage key: content.ts mirrors the promo toggle there, '1' for on. */
 export const PROMOS_KEY = 'yts:hidePromos';
 
-export const DEFAULT_ADD_TO_HISTORY = false;
-
 /** The watch page speed button's fast rate. YouTube's own steps, so the player keeps them. */
 export const SPEED_OPTIONS = [1.25, 1.5, 1.75, 2];
 
@@ -56,7 +54,6 @@ export const toggledRate = (current: number, fast: number): number => (current =
 
 /**
  * `consent`: the user agreed to send transcripts to Anthropic, as Web Store policy requires.
- * `addToHistory`: new summaries go into YouTube watch history.
  * `speed`: the fast rate of the watch page speed button.
  */
 export type Settings = {
@@ -65,7 +62,6 @@ export type Settings = {
   langs: string[];
   maxAgeDays: number;
   hidePromos: boolean;
-  addToHistory: boolean;
   speed: number;
 };
 
@@ -77,7 +73,6 @@ export type SettingsView = {
   langs: string[];
   maxAgeDays: number;
   hidePromos: boolean;
-  addToHistory: boolean;
   speed: number;
 };
 
@@ -114,10 +109,6 @@ type Api = {
   'key/status': { req: object; res: { ready: boolean } };
   // Saved on its own as the box is ticked, so open tabs apply it at once.
   'promos/save': { req: { hidePromos: boolean }; res: SettingsView };
-  // Saved on its own as the box is ticked, like the promo toggle.
-  'history/save': { req: { addToHistory: boolean }; res: SettingsView };
-  // Open to content scripts: whether to add a new summary to YouTube watch history.
-  'history/get': { req: object; res: { addToHistory: boolean } };
   // Saved on its own as it's picked, and handed to open tabs for the button's label.
   'speed/save': { req: { speed: number }; res: SettingsView };
   // Open to content scripts: the speed button's fast rate.
@@ -148,7 +139,6 @@ export const PRIVILEGED: readonly MessageType[] = [
   'key/test',
   'settings/drawer',
   'promos/save',
-  'history/save',
   'speed/save',
 ];
 

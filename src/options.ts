@@ -23,7 +23,6 @@ const consentBox = document.querySelector<HTMLInputElement>('#consent')!;
 const langsList = document.querySelector<HTMLDivElement>('#langs .list')!;
 const maxAgeSelect = document.querySelector<HTMLSelectElement>('#max-age')!;
 const hidePromosBox = document.querySelector<HTMLInputElement>('#hide-promos')!;
-const addToHistoryBox = document.querySelector<HTMLInputElement>('#add-to-history')!;
 const speedSelect = document.querySelector<HTMLSelectElement>('#speed')!;
 const testButton = document.querySelector<HTMLButtonElement>('#test')!;
 const status = document.querySelector<HTMLOutputElement>('#status')!;
@@ -37,7 +36,6 @@ function show(settings: SettingsView): void {
   maxAgeSelect.value = String(settings.maxAgeDays);
   savedMaxAge = settings.maxAgeDays;
   hidePromosBox.checked = settings.hidePromos;
-  addToHistoryBox.checked = settings.addToHistory;
   speedSelect.value = String(settings.speed);
 }
 
@@ -114,18 +112,6 @@ hidePromosBox.addEventListener('change', async () => {
   hidePromosBox.checked = hidePromos;
   report(
     hidePromos ? 'Promos hidden.' : 'Promos shown. Reload YouTube for any filtered out.',
-    true,
-  );
-});
-
-// Saved on its own too: the next summary in any tab reads it.
-addToHistoryBox.addEventListener('change', async () => {
-  const { addToHistory } = await send('history/save', { addToHistory: addToHistoryBox.checked });
-  addToHistoryBox.checked = addToHistory;
-  report(
-    addToHistory
-      ? 'New summaries go into YouTube history.'
-      : 'New summaries stay out of YouTube history.',
     true,
   );
 });

@@ -405,66 +405,6 @@ export function removePromos(data: unknown): number {
   return removed;
 }
 
-// The watch page's inline player response. /youtubei/v1/player answers UNPLAYABLE without the
-// player's attestation token, so the page is the source, as it is for yt-dlp.
-const PLAYER_RESPONSE = /ytInitialPlayerResponse\s*=\s*(\{.+?\});\s*(?:var\s|<\/script>)/s;
-const PLAYBACK_URL = ['playbackTracking', 'videostatsPlaybackUrl', 'baseUrl'];
-const WATCHTIME_URL = ['playbackTracking', 'videostatsWatchtimeUrl', 'baseUrl'];
-const CPN_ALPHABET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_';
-
-/** The `ytInitialPlayerResponse` in a watch page's HTML, or null if none parses. */
-export function playerResponse(html: string): unknown {
-  const match = PLAYER_RESPONSE.exec(html);
-  if (!match) return null;
-  try {
-    return JSON.parse(match[1]);
-  } catch {
-    return null;
-  }
-}
-
-/** A client playback nonce: 16 characters, as the player makes one per playback. */
-export const playbackNonce = (bytes = crypto.getRandomValues(new Uint8Array(16))): string =>
-  Array.from(bytes, (byte) => CPN_ALPHABET[byte & 63]).join('');
-
-/**
- * A tracking ping at `path` for `id`, reported as played to just before the end, from the watch
- * page rather than Shorts. Undefined unless the URL is a youtube.com one for this video.
- */
-function trackingPing(player: unknown, path: string[], id: string, cpn: string): URL | undefined {
-  const base = at(player, path);
-  if (typeof base !== 'string') return undefined;
-  let url: URL;
-  try {
-    url = new URL(base);
-  } catch {
-    return undefined;
-  }
-  const ours = url.protocol === 'https:' && /(^|\.)youtube\.com$/.test(url.hostname);
-  if (!ours || url.searchParams.get('docid') !== id) return undefined;
-  const len = Number(url.searchParams.get('len') ?? 1.5);
-  url.searchParams.set('ver', '2');
-  url.searchParams.set('cpn', cpn);
-  url.searchParams.set('cmt', String(Number.isFinite(len) ? len - 1 : 0.5));
-  url.searchParams.set('el', 'detailpage');
-  return url;
-}
-
-/**
- * The player's playback and watch-time pings for `id`, in that order, as yt-dlp marks a video
- * watched: the watch-time one, covering start to end, is what adds it to watch history. Empty
- * without a playback ping, as for an unplayable video.
- */
-export function historyPingUrls(player: unknown, id: string, cpn: string): string[] {
-  const playback = trackingPing(player, PLAYBACK_URL, id, cpn);
-  if (!playback) return [];
-  const watchtime = trackingPing(player, WATCHTIME_URL, id, cpn);
-  if (!watchtime) return [playback.href];
-  watchtime.searchParams.set('st', '0');
-  watchtime.searchParams.set('et', watchtime.searchParams.get('cmt')!);
-  return [playback.href, watchtime.href];
-}
-
 /** Same-origin oEmbed, as the CLI uses for titles: no auth, public data only. */
 export const oembedUrl = (id: string): string =>
   `/oembed?format=json&url=${encodeURIComponent(watchUrl(id))}`;
