@@ -20,6 +20,7 @@ Copy for the developer dashboard. Keep in step with the manifest and PRIVACY.md.
 > - Hide promos: optionally remove YouTube's own promo shelves, such as membership and Premium trailers.
 > - Not interested and Watched: one click on a Home tile tells YouTube you've seen it or don't want it.
 > - Copy for chat: copies the title, link, summary and transcript as a prompt for any chat.
+> - Playback speed: one button beside Summarise switches between normal and fast playback, for the videos you do watch.
 >
 > Bring your own Anthropic API key. Summaries are billed to your Anthropic account and cached in your browser, so a video is never summarised twice. Nothing is sent to Anthropic until you agree in the settings, and the extension has no server of its own.
 >
@@ -29,7 +30,7 @@ Copy for the developer dashboard. Keep in step with the manifest and PRIVACY.md.
 
 - Icon: icons/icon-128.png
 - Screenshots, 1280x800: the drawer with a summary on a watch page, Home with Summarise and Watched buttons on tiles, the settings in the drawer.
-- Small promo tile, 440x280.
+- Small promo tile, 440x280: optional. Without one the listing ranks below those that have one.
 
 ## Privacy practices tab
 
@@ -40,7 +41,7 @@ Copy for the developer dashboard. Keep in step with the manifest and PRIVACY.md.
 **Permission justifications:**
 
 - `storage`: saves the user's settings, API key, cached summaries and videos marked Not interested, on the device only.
-- Host `https://www.youtube.com/*`: the content scripts add the Summarise buttons and drawer, fetch the video transcript, filter the Home feed and, when the user turns it on, add summarised videos to their YouTube watch history. YouTube is the only site the extension runs on.
+- Host `https://www.youtube.com/*`: the content scripts add the Summarise buttons and drawer, fetch the video transcript, filter the Home feed and add the playback speed button. YouTube is the only site the extension runs on.
 - Host `https://api.anthropic.com/*`: the service worker sends the transcript to Anthropic's Claude API to generate the summary the user asked for, with the user's own API key.
 - Web-accessible `options.html`: the settings page is shown in a frame inside the drawer on YouTube, so the user can set it up without leaving the page.
 - Main-world content script (`page.js`): reads YouTube's page data for the feed tiles, and removes old videos and promos from the Home responses YouTube already requested, before YouTube renders them. Its only requests are YouTube's own Not interested command and, for Watched, the "I've already watched this video" reason, when the user clicks them.
@@ -58,7 +59,7 @@ Copy for the developer dashboard. Keep in step with the manifest and PRIVACY.md.
 - I do not use or transfer user data for purposes that are unrelated to my item's single purpose.
 - I do not use or transfer user data to determine creditworthiness or for lending purposes.
 
-**Privacy policy URL:** the hosted PRIVACY.md, e.g. `https://robertosobachi.github.io/youtube-summary-extension/PRIVACY` once GitHub Pages is on.
+**Privacy policy URL:** `https://github.com/robertosobachi/youtube-summary-extension/blob/main/PRIVACY.md`
 
 ## Distribution tab
 
