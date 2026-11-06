@@ -59,18 +59,51 @@ describe('transcriptParams', () => {
 });
 
 describe('extractTranscript', () => {
-  it('collects segment lines in order and skips chapters', () => {
-    const lines = extractTranscript(transcript);
-    expect(lines).toEqual([1, 2, 3, 4, 5, 6].map((n) => `Segment ${n}`));
-    expect(lines.join(' ')).not.toContain('Chapter');
+  it('collects segments in order, tagged with their chapter', () => {
+    const segments = extractTranscript(transcript);
+    expect(segments.map((s) => s.text)).toEqual([1, 2, 3, 4, 5, 6].map((n) => `Segment ${n}`));
+    expect(segments.map((s) => s.chapter)).toEqual([1, 1, 1, 2, 2, 2].map((n) => `Chapter ${n}`));
+    expect(segments[0].timestamp).toBe('0:00');
+    expect(segments.every((s) => /^\d+:\d\d$/.test(s.timestamp))).toBe(true);
   });
 
   it('returns nothing for a panel with zero segments', () => {
     expect(extractTranscript({ responseContext: {}, content: {} })).toEqual([]);
   });
+});
 
-  it('joins lines into one string without newlines', () => {
-    expect(transcriptText(['a\nb', 'c'])).toBe('a b c');
+describe('transcriptText', () => {
+  it('heads each chapter and opens its paragraph with a timestamp', () => {
+    const text = transcriptText([
+      { text: 'a', timestamp: '0:00', chapter: 'Intro' },
+      { text: 'b', timestamp: '0:04', chapter: 'Intro' },
+      { text: 'c', timestamp: '0:10', chapter: 'Main' },
+    ]);
+    expect(text).toBe('### Intro\n\n[0:00] a b\n\n### Main\n\n[0:10] c');
+  });
+
+  it('starts a new paragraph after a minute when there are no chapters', () => {
+    const text = transcriptText([
+      { text: 'a', timestamp: '0:00' },
+      { text: 'b', timestamp: '0:59' },
+      { text: 'c', timestamp: '1:00' },
+      { text: 'd', timestamp: '1:30' },
+      { text: 'e', timestamp: '1:00:00' },
+    ]);
+    expect(text).toBe('[0:00] a b\n\n[1:00] c d\n\n[1:00:00] e');
+  });
+
+  it('flattens newlines inside a segment', () => {
+    expect(transcriptText([{ text: 'a\nb', timestamp: '0:00' }])).toBe('[0:00] a b');
+  });
+
+  it('keeps going without timestamps, as one paragraph', () => {
+    expect(
+      transcriptText([
+        { text: 'a', timestamp: '' },
+        { text: 'b', timestamp: '' },
+      ]),
+    ).toBe('a b');
   });
 });
 

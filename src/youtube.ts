@@ -98,12 +98,16 @@ export function transcriptRequest(cfg: InnertubeConfig, videoId: string): Reques
   };
 }
 
+/** One transcript line: its text, its `m:ss` or `h:mm:ss` timestamp, and its chapter, if any. */
+export type Segment = { text: string; timestamp: string; chapter?: string };
+
 /**
- * Every `transcriptSegmentViewModel.simpleText`, in order. Chapter headings share the panel
- * as `timelineChapterViewModel` and are skipped. An empty result means no transcript.
+ * Every `transcriptSegmentViewModel`, in order, tagged with the title of the
+ * `timelineChapterViewModel` heading it sits under. An empty result means no transcript.
  */
-export function extractTranscript(data: unknown): string[] {
-  const lines: string[] = [];
+export function extractTranscript(data: unknown): Segment[] {
+  const segments: Segment[] = [];
+  let chapter: string | undefined;
   const walk = (node: unknown): void => {
     if (Array.isArray(node)) {
       node.forEach(walk);
@@ -111,20 +115,64 @@ export function extractTranscript(data: unknown): string[] {
     }
     if (!isObject(node)) return;
     for (const [key, value] of Object.entries(node)) {
-      if (key === 'timelineChapterViewModel') continue;
+      if (key === 'timelineChapterViewModel') {
+        if (isObject(value) && typeof value.title === 'string') chapter = value.title;
+        continue;
+      }
       if (key === 'transcriptSegmentViewModel' && isObject(value)) {
-        if (typeof value.simpleText === 'string') lines.push(value.simpleText);
+        if (typeof value.simpleText === 'string') {
+          const timestamp = typeof value.timestamp === 'string' ? value.timestamp : '';
+          segments.push({ text: value.simpleText, timestamp, chapter });
+        }
         continue;
       }
       walk(value);
     }
   };
   walk(data);
-  return lines;
+  return segments;
 }
 
-/** One string, as the CLI sends it: lines joined by spaces, no newlines. */
-export const transcriptText = (lines: string[]): string => lines.join(' ').replace(/\n/g, ' ');
+/** Seconds in an `m:ss` or `h:mm:ss` timestamp, NaN when it isn't one. */
+const seconds = (timestamp: string): number =>
+  /^\d+(:\d+){1,2}$/.test(timestamp)
+    ? timestamp.split(':').reduce((total, part) => total * 60 + Number(part), 0)
+    : NaN;
+
+/** How long a paragraph runs before the next one starts, when no chapter splits it first. */
+const PARAGRAPH_SECONDS = 60;
+
+/**
+ * Readable Markdown: a `###` heading per chapter, and paragraphs of about a minute, each
+ * opening with its `[m:ss]` timestamp. One timestamp per paragraph keeps the token cost low.
+ */
+export function transcriptText(segments: Segment[]): string {
+  const blocks: string[] = [];
+  let chapter: string | undefined;
+  let paragraph: string[] = [];
+  let start = NaN;
+  const flush = (): void => {
+    if (paragraph.length) blocks.push(paragraph.join(' '));
+    paragraph = [];
+  };
+  for (const { text, timestamp, chapter: next } of segments) {
+    const at = seconds(timestamp);
+    if (next !== chapter) {
+      flush();
+      chapter = next;
+      if (chapter) blocks.push(`### ${chapter}`);
+    } else if (at - start >= PARAGRAPH_SECONDS) {
+      flush();
+    }
+    if (!paragraph.length) {
+      start = at;
+      if (timestamp) paragraph.push(`[${timestamp}]`);
+    }
+    paragraph.push(text.replace(/\n/g, ' '));
+  }
+  flush();
+  return blocks.join('\n\n');
+}
 
 /** Title and channel of the watched video from a `yt-navigate-finish` detail, if present. */
 export function watchVideo(detail: unknown): VideoMeta | null {
