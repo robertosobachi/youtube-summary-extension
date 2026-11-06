@@ -29,7 +29,7 @@ Copy for the developer dashboard. Keep in step with the manifest and PRIVACY.md.
 **Assets:**
 
 - Icon: icons/icon-128.png
-- Screenshots, 1280x800: the drawer with a summary on a watch page, Home with Summarise and Watched buttons on tiles, the settings in the drawer.
+- Screenshots, 1280x800, upload in order: `store/screenshots/1-summary.png` (summary drawer over Home), `2-watch-page.png` (Summarise and speed buttons), `3-settings.png` (settings in the drawer).
 - Small promo tile, 440x280: optional. Without one the listing ranks below those that have one.
 
 ## Privacy practices tab
