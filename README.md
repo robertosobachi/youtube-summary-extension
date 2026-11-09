@@ -18,6 +18,7 @@ Triage your YouTube feed: summarise videos with Claude and hide the ones not wor
 - **Age filter:** hides Home feed videos older than a cut-off before YouTube renders them, so infinite scroll keeps working. Off by default. Ads, Shorts, live streams, premieres without a date and anything unreadable stay. Search, Subscriptions and the watch page are not touched. YouTube shows rounded dates ("1 yr ago" covers 12 to 23 months), so the cut-off works in those steps: a month counts as 30 days and a year as 365. Dates are read in English only.
 - **YouTube featured promos:** hides YouTube's own promo sections, such as "Get more from memberships", Premium trailers and Premium offers, from the feeds. Off by default. A toggle in the settings, saved and applied to open YouTube tabs as soon as you change it. Matched by YouTube's renderer type, so in any language: removed from Home responses before YouTube renders them, and hidden by CSS if already on the page. After switching it off, reload YouTube to bring back promos already removed.
 - **Mixes and playlists:** hides Home's collection tiles, the ones drawn with stacked thumbnails such as Mixes and playlists. Off by default. A toggle in the settings, applied as soon as you change it, in the same two ways as promos and in any language. Home only: a channel's Playlists tab is untouched. After switching it off, reload YouTube to bring back collections already removed.
+- **Comments:** hides the comments section on the watch page. Off by default. A toggle in the settings, applied to open YouTube tabs both ways as soon as you change it, no reload needed. CSS only: while hidden, YouTube never loads the comments. Shorts comments and live chat are untouched.
 
 ## Install
 
@@ -41,6 +42,7 @@ With no API key saved, the settings open in the drawer on YouTube: once when the
 - **Hide Home videos older than:** 1 week to 2 years, or Off. Applies to videos loaded after saving; reload YouTube to refilter the ones already shown.
 - **Hide YouTube featured promos** and **Hide Mixes and playlists:** saved as soon as you tick or untick them, no Save needed.
 - **Fast playback speed:** 1.25x to 2x, the speed button's faster rate. Saved as soon as you pick it, too.
+- **Hide comments:** saved as soon as you tick or untick it, too.
 
 Click Save. Test key checks the key against the API without generating a summary.
 
