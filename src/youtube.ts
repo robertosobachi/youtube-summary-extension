@@ -49,6 +49,8 @@ export const SELECTORS = {
     'ytd-browse[page-subtype="home"] ytd-rich-item-renderer:has(yt-collection-thumbnail-view-model)',
   /** The watch page comments section, header and threads both. */
   comments: 'ytd-watch-flexy ytd-comments#comments',
+  /** The watch page related videos list, beside or below the video. Not its companion ad slot. */
+  related: 'ytd-watch-flexy ytd-watch-next-secondary-results-renderer',
 };
 
 export const BROWSE_PATH = '/youtubei/v1/browse';

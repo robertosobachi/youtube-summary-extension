@@ -232,6 +232,8 @@ chrome.runtime.onMessage.addListener((msg: TabMessage, sender, sendResponse) => 
     applyCollections(msg.hideCollections);
   } else if (msg.type === 'comments/set') {
     applyComments(msg.hideComments);
+  } else if (msg.type === 'related/set') {
+    applyRelated(msg.hideRelated);
   } else if (msg.type === 'speed/set') {
     fastSpeed = msg.speed;
     showSpeed();
@@ -297,12 +299,23 @@ function applyComments(hide: boolean): void {
   else commentStyle.remove();
 }
 
+// Related videos the same way: the first batch still arrives with the watch page, but hidden, its
+// continuation never scrolls into view, so no more are fetched until the style goes.
+const relatedStyle = document.createElement('style');
+relatedStyle.textContent = `${SELECTORS.related} { display: none !important; }`;
+
+function applyRelated(hide: boolean): void {
+  if (hide) (document.head ?? document.documentElement).append(relatedStyle);
+  else relatedStyle.remove();
+}
+
 send('filter/get', {})
-  .then(({ maxAgeDays, hidePromos, hideCollections, hideComments }) => {
+  .then(({ maxAgeDays, hidePromos, hideCollections, hideComments, hideRelated }) => {
     mirrorFilter(maxAgeDays);
     applyPromos(hidePromos);
     applyCollections(hideCollections);
     applyComments(hideComments);
+    applyRelated(hideRelated);
   })
   .catch(() => {});
 

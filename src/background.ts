@@ -14,6 +14,7 @@ import {
   DEFAULT_HIDE_COLLECTIONS,
   DEFAULT_HIDE_COMMENTS,
   DEFAULT_HIDE_PROMOS,
+  DEFAULT_HIDE_RELATED,
   DEFAULT_LANGS,
   DEFAULT_MAX_AGE_DAYS,
   DEFAULT_SPEED,
@@ -55,6 +56,7 @@ async function getSettings(): Promise<Settings> {
     hidePromos: DEFAULT_HIDE_PROMOS,
     hideCollections: DEFAULT_HIDE_COLLECTIONS,
     hideComments: DEFAULT_HIDE_COMMENTS,
+    hideRelated: DEFAULT_HIDE_RELATED,
     speed: DEFAULT_SPEED,
     ...(settings as Partial<Settings> | undefined),
   };
@@ -74,8 +76,17 @@ function serialised<T>(task: () => Promise<T>): Promise<T> {
 }
 
 function view(settings: Settings): SettingsView {
-  const { apiKey, consent, langs, maxAgeDays, hidePromos, hideCollections, hideComments, speed } =
-    settings;
+  const {
+    apiKey,
+    consent,
+    langs,
+    maxAgeDays,
+    hidePromos,
+    hideCollections,
+    hideComments,
+    hideRelated,
+    speed,
+  } = settings;
   const keyHint = apiKey.slice(-4);
   return {
     hasKey: Boolean(apiKey),
@@ -86,6 +97,7 @@ function view(settings: Settings): SettingsView {
     hidePromos,
     hideCollections,
     hideComments,
+    hideRelated,
     speed,
   };
 }
@@ -142,6 +154,17 @@ async function saveComments(hideComments: unknown): Promise<SettingsView> {
     return next;
   });
   await broadcast({ type: 'comments/set', hideComments: saved.hideComments });
+  return view(saved);
+}
+
+/** The related videos toggle alone, saved and applied to open tabs at once like comments. */
+async function saveRelated(hideRelated: unknown): Promise<SettingsView> {
+  const saved = await serialised(async () => {
+    const next = { ...(await getSettings()), hideRelated: hideRelated === true };
+    await chrome.storage.local.set({ settings: next });
+    return next;
+  });
+  await broadcast({ type: 'related/set', hideRelated: saved.hideRelated });
   return view(saved);
 }
 
@@ -346,13 +369,16 @@ async function handle(msg: Message, sender: chrome.runtime.MessageSender): Promi
       return saveCollections(msg.hideCollections);
     case 'comments/save':
       return saveComments(msg.hideComments);
+    case 'related/save':
+      return saveRelated(msg.hideRelated);
     case 'speed/save':
       return saveSpeed(msg.speed);
     case 'speed/get':
       return { speed: parseSpeed((await getSettings()).speed) };
     case 'filter/get': {
-      const { maxAgeDays, hidePromos, hideCollections, hideComments } = await getSettings();
-      return { maxAgeDays, hidePromos, hideCollections, hideComments };
+      const { maxAgeDays, hidePromos, hideCollections, hideComments, hideRelated } =
+        await getSettings();
+      return { maxAgeDays, hidePromos, hideCollections, hideComments, hideRelated };
     }
     case 'summary/get':
       return isVideoId(msg.id) ? ((await getSummaries())[msg.id] ?? null) : null;

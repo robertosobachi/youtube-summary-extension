@@ -46,6 +46,9 @@ export const COLLECTIONS_KEY = 'yts:hideCollections';
 /** Applied by CSS alone, so unlike the feed toggles it isn't mirrored to localStorage. */
 export const DEFAULT_HIDE_COMMENTS = false;
 
+/** CSS alone as well, so not mirrored either. */
+export const DEFAULT_HIDE_RELATED = false;
+
 /** The watch page speed button's fast rate. YouTube's own steps, so the player keeps them. */
 export const SPEED_OPTIONS = [1.25, 1.5, 1.75, 2];
 
@@ -72,6 +75,7 @@ export type Settings = {
   hidePromos: boolean;
   hideCollections: boolean;
   hideComments: boolean;
+  hideRelated: boolean;
   speed: number;
 };
 
@@ -85,6 +89,7 @@ export type SettingsView = {
   hidePromos: boolean;
   hideCollections: boolean;
   hideComments: boolean;
+  hideRelated: boolean;
   speed: number;
 };
 
@@ -123,11 +128,12 @@ type Api = {
   'promos/save': { req: { hidePromos: boolean }; res: SettingsView };
   'collections/save': { req: { hideCollections: boolean }; res: SettingsView };
   'comments/save': { req: { hideComments: boolean }; res: SettingsView };
+  'related/save': { req: { hideRelated: boolean }; res: SettingsView };
   // Saved on its own as it's picked, and handed to open tabs for the button's label.
   'speed/save': { req: { speed: number }; res: SettingsView };
   // Open to content scripts: the speed button's fast rate.
   'speed/get': { req: object; res: { speed: number } };
-  // Open to content scripts: the feed filters and the comments toggle, which are not private.
+  // Open to content scripts: the feed filters and the watch page toggles, which are not private.
   'filter/get': {
     req: object;
     res: {
@@ -135,6 +141,7 @@ type Api = {
       hidePromos: boolean;
       hideCollections: boolean;
       hideComments: boolean;
+      hideRelated: boolean;
     };
   };
   'summary/get': { req: { id: string }; res: Summary | null };
@@ -163,6 +170,7 @@ export const PRIVILEGED: readonly MessageType[] = [
   'promos/save',
   'collections/save',
   'comments/save',
+  'related/save',
   'speed/save',
 ];
 
@@ -173,6 +181,7 @@ export type TabMessage =
   | { type: 'promos/set'; hidePromos: boolean }
   | { type: 'collections/set'; hideCollections: boolean }
   | { type: 'comments/set'; hideComments: boolean }
+  | { type: 'related/set'; hideRelated: boolean }
   | { type: 'speed/set'; speed: number };
 
 export function send<K extends MessageType>(type: K, req: Api[K]['req']): Promise<Reply<K>> {

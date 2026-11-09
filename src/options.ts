@@ -25,6 +25,7 @@ const maxAgeSelect = document.querySelector<HTMLSelectElement>('#max-age')!;
 const hidePromosBox = document.querySelector<HTMLInputElement>('#hide-promos')!;
 const hideCollectionsBox = document.querySelector<HTMLInputElement>('#hide-collections')!;
 const hideCommentsBox = document.querySelector<HTMLInputElement>('#hide-comments')!;
+const hideRelatedBox = document.querySelector<HTMLInputElement>('#hide-related')!;
 const speedSelect = document.querySelector<HTMLSelectElement>('#speed')!;
 const testButton = document.querySelector<HTMLButtonElement>('#test')!;
 const status = document.querySelector<HTMLOutputElement>('#status')!;
@@ -40,6 +41,7 @@ function show(settings: SettingsView): void {
   hidePromosBox.checked = settings.hidePromos;
   hideCollectionsBox.checked = settings.hideCollections;
   hideCommentsBox.checked = settings.hideComments;
+  hideRelatedBox.checked = settings.hideRelated;
   speedSelect.value = String(settings.speed);
 }
 
@@ -139,6 +141,13 @@ hideCommentsBox.addEventListener('change', async () => {
   const { hideComments } = await send('comments/save', { hideComments: hideCommentsBox.checked });
   hideCommentsBox.checked = hideComments;
   report(hideComments ? 'Comments hidden.' : 'Comments shown.', true);
+});
+
+// Same for related videos: CSS only, applied to open tabs without a reload.
+hideRelatedBox.addEventListener('change', async () => {
+  const { hideRelated } = await send('related/save', { hideRelated: hideRelatedBox.checked });
+  hideRelatedBox.checked = hideRelated;
+  report(hideRelated ? 'Related videos hidden.' : 'Related videos shown.', true);
 });
 
 // Saved on its own as well: open tabs update the button's label at once.
