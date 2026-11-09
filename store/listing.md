@@ -20,6 +20,7 @@ Copy for the developer dashboard. Keep in step with the manifest and PRIVACY.md.
 > - Hide promos: optionally remove YouTube's own promo shelves, such as membership and Premium trailers.
 > - Hide Mixes and playlists: optionally remove collection tiles from Home.
 > - Hide comments: optionally hide the comments under a video.
+> - Hide related videos: optionally hide the suggestions beside a video.
 > - Not interested and Watched: one click on a Home tile tells YouTube you've seen it or don't want it.
 > - Copy for chat: copies the title, link, summary and transcript as a prompt for any chat.
 > - Playback speed: one button beside Summarise switches between normal and fast playback, for the videos you do watch.

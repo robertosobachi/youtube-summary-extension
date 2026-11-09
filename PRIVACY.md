@@ -10,7 +10,7 @@ Refeed for YouTube is a Chrome extension that summarises YouTube videos with Ant
 - **Video details:** title, channel name and transcript of the videos you summarise.
 - **Summaries** generated for those videos.
 - **Video ids** of videos you mark Not interested or Watched, with their title and channel.
-- **Settings:** summary languages, the age cut-off, the promo, collection and comment toggles and the fast playback speed.
+- **Settings:** summary languages, the age cut-off, the promo, collection, comment and related video toggles and the fast playback speed.
 
 ## Where it is stored
 
