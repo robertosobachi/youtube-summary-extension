@@ -24,6 +24,7 @@ const langsList = document.querySelector<HTMLDivElement>('#langs .list')!;
 const maxAgeSelect = document.querySelector<HTMLSelectElement>('#max-age')!;
 const hidePromosBox = document.querySelector<HTMLInputElement>('#hide-promos')!;
 const hideCollectionsBox = document.querySelector<HTMLInputElement>('#hide-collections')!;
+const hideCommentsBox = document.querySelector<HTMLInputElement>('#hide-comments')!;
 const speedSelect = document.querySelector<HTMLSelectElement>('#speed')!;
 const testButton = document.querySelector<HTMLButtonElement>('#test')!;
 const status = document.querySelector<HTMLOutputElement>('#status')!;
@@ -38,6 +39,7 @@ function show(settings: SettingsView): void {
   savedMaxAge = settings.maxAgeDays;
   hidePromosBox.checked = settings.hidePromos;
   hideCollectionsBox.checked = settings.hideCollections;
+  hideCommentsBox.checked = settings.hideComments;
   speedSelect.value = String(settings.speed);
 }
 
@@ -130,6 +132,13 @@ hideCollectionsBox.addEventListener('change', async () => {
       : 'Mixes and playlists shown. Reload YouTube for any filtered out.',
     true,
   );
+});
+
+// Saved on its own too. CSS only, so open tabs show or hide comments without a reload.
+hideCommentsBox.addEventListener('change', async () => {
+  const { hideComments } = await send('comments/save', { hideComments: hideCommentsBox.checked });
+  hideCommentsBox.checked = hideComments;
+  report(hideComments ? 'Comments hidden.' : 'Comments shown.', true);
 });
 
 // Saved on its own as well: open tabs update the button's label at once.

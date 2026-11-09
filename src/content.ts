@@ -230,6 +230,8 @@ chrome.runtime.onMessage.addListener((msg: TabMessage, sender, sendResponse) => 
     applyPromos(msg.hidePromos);
   } else if (msg.type === 'collections/set') {
     applyCollections(msg.hideCollections);
+  } else if (msg.type === 'comments/set') {
+    applyComments(msg.hideComments);
   } else if (msg.type === 'speed/set') {
     fastSpeed = msg.speed;
     showSpeed();
@@ -285,11 +287,22 @@ function applyCollections(hide: boolean): void {
   else collectionStyle.remove();
 }
 
+// Comments by CSS alone: hidden, their lazy continuation never scrolls into view, so YouTube
+// doesn't fetch them, and removing the style lets it load them without a reload.
+const commentStyle = document.createElement('style');
+commentStyle.textContent = `${SELECTORS.comments} { display: none !important; }`;
+
+function applyComments(hide: boolean): void {
+  if (hide) (document.head ?? document.documentElement).append(commentStyle);
+  else commentStyle.remove();
+}
+
 send('filter/get', {})
-  .then(({ maxAgeDays, hidePromos, hideCollections }) => {
+  .then(({ maxAgeDays, hidePromos, hideCollections, hideComments }) => {
     mirrorFilter(maxAgeDays);
     applyPromos(hidePromos);
     applyCollections(hideCollections);
+    applyComments(hideComments);
   })
   .catch(() => {});
 

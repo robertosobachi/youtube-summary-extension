@@ -43,6 +43,9 @@ export const DEFAULT_HIDE_COLLECTIONS = false;
 /** youtube.com localStorage key: content.ts mirrors the collections toggle there, '1' for on. */
 export const COLLECTIONS_KEY = 'yts:hideCollections';
 
+/** Applied by CSS alone, so unlike the feed toggles it isn't mirrored to localStorage. */
+export const DEFAULT_HIDE_COMMENTS = false;
+
 /** The watch page speed button's fast rate. YouTube's own steps, so the player keeps them. */
 export const SPEED_OPTIONS = [1.25, 1.5, 1.75, 2];
 
@@ -68,6 +71,7 @@ export type Settings = {
   maxAgeDays: number;
   hidePromos: boolean;
   hideCollections: boolean;
+  hideComments: boolean;
   speed: number;
 };
 
@@ -80,6 +84,7 @@ export type SettingsView = {
   maxAgeDays: number;
   hidePromos: boolean;
   hideCollections: boolean;
+  hideComments: boolean;
   speed: number;
 };
 
@@ -117,14 +122,20 @@ type Api = {
   // Saved on its own as the box is ticked, so open tabs apply it at once.
   'promos/save': { req: { hidePromos: boolean }; res: SettingsView };
   'collections/save': { req: { hideCollections: boolean }; res: SettingsView };
+  'comments/save': { req: { hideComments: boolean }; res: SettingsView };
   // Saved on its own as it's picked, and handed to open tabs for the button's label.
   'speed/save': { req: { speed: number }; res: SettingsView };
   // Open to content scripts: the speed button's fast rate.
   'speed/get': { req: object; res: { speed: number } };
-  // Open to content scripts: the feed filters, which are not private.
+  // Open to content scripts: the feed filters and the comments toggle, which are not private.
   'filter/get': {
     req: object;
-    res: { maxAgeDays: number; hidePromos: boolean; hideCollections: boolean };
+    res: {
+      maxAgeDays: number;
+      hidePromos: boolean;
+      hideCollections: boolean;
+      hideComments: boolean;
+    };
   };
   'summary/get': { req: { id: string }; res: Summary | null };
   // Open to content scripts: which videos have a cached summary, to hide them from feeds.
@@ -151,6 +162,7 @@ export const PRIVILEGED: readonly MessageType[] = [
   'settings/drawer',
   'promos/save',
   'collections/save',
+  'comments/save',
   'speed/save',
 ];
 
@@ -160,6 +172,7 @@ export type TabMessage =
   | { type: 'filter/set'; maxAgeDays: number }
   | { type: 'promos/set'; hidePromos: boolean }
   | { type: 'collections/set'; hideCollections: boolean }
+  | { type: 'comments/set'; hideComments: boolean }
   | { type: 'speed/set'; speed: number };
 
 export function send<K extends MessageType>(type: K, req: Api[K]['req']): Promise<Reply<K>> {

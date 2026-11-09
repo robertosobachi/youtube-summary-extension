@@ -47,6 +47,8 @@ export const SELECTORS = {
    */
   collectionTile:
     'ytd-browse[page-subtype="home"] ytd-rich-item-renderer:has(yt-collection-thumbnail-view-model)',
+  /** The watch page comments section, header and threads both. */
+  comments: 'ytd-watch-flexy ytd-comments#comments',
 };
 
 export const BROWSE_PATH = '/youtubei/v1/browse';
