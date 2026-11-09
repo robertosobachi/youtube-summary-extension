@@ -17,6 +17,7 @@ Triage your YouTube feed: summarise videos with Claude and hide the ones not wor
 - **Cancel:** closing the drawer while a summary is in progress cancels it, and nothing is saved.
 - **Age filter:** hides Home feed videos older than a cut-off before YouTube renders them, so infinite scroll keeps working. Off by default. Ads, Shorts, live streams, premieres without a date and anything unreadable stay. Search, Subscriptions and the watch page are not touched. YouTube shows rounded dates ("1 yr ago" covers 12 to 23 months), so the cut-off works in those steps: a month counts as 30 days and a year as 365. Dates are read in English only.
 - **YouTube featured promos:** hides YouTube's own promo sections, such as "Get more from memberships", Premium trailers and Premium offers, from the feeds. Off by default. A toggle in the settings, saved and applied to open YouTube tabs as soon as you change it. Matched by YouTube's renderer type, so in any language: removed from Home responses before YouTube renders them, and hidden by CSS if already on the page. After switching it off, reload YouTube to bring back promos already removed.
+- **Mixes and playlists:** hides Home's collection tiles, the ones drawn with stacked thumbnails such as Mixes and playlists. Off by default. A toggle in the settings, applied as soon as you change it, in the same two ways as promos and in any language. Home only: a channel's Playlists tab is untouched. After switching it off, reload YouTube to bring back collections already removed.
 
 ## Install
 
@@ -38,7 +39,7 @@ With no API key saved, the settings open in the drawer on YouTube: once when the
 - **Send transcripts to Anthropic:** under the key field, required to save a key. Untick it to stop summaries: Summarise then opens the settings and nothing goes to Anthropic.
 - **Summary languages:** tick one or more. Defaults to English.
 - **Hide Home videos older than:** 1 week to 2 years, or Off. Applies to videos loaded after saving; reload YouTube to refilter the ones already shown.
-- **Hide YouTube featured promos:** saved as soon as you tick or untick it, no Save needed.
+- **Hide YouTube featured promos** and **Hide Mixes and playlists:** saved as soon as you tick or untick them, no Save needed.
 - **Fast playback speed:** 1.25x to 2x, the speed button's faster rate. Saved as soon as you pick it, too.
 
 Click Save. Test key checks the key against the API without generating a summary.
@@ -49,7 +50,7 @@ Click Save. Test key checks the key against the API without generating a summary
 
 - The API key, language list, cached summaries (title, channel, summary, transcript) and your Not interested videos are kept in `chrome.storage.local`, in this browser only.
 - Storage is restricted to the extension's own pages and service worker. Content scripts on youtube.com can't read it.
-- The age cut-off and the promo toggle are the only settings copied to youtube.com's `localStorage` (`yts:maxAgeDays`, `yts:hidePromos`), because the page script needs them before YouTube's first response. YouTube's scripts can read them.
+- The age cut-off and the promo and collection toggles are the only settings copied to youtube.com's `localStorage` (`yts:maxAgeDays`, `yts:hidePromos`, `yts:hideCollections`), because the page script needs them before YouTube's first response. YouTube's scripts can read them.
 - Only the service worker reads the key. The options page sees whether a key is saved and its last 4 characters. Content scripts only learn whether a key is saved, plus which video ids have a cached summary or are marked Watched or Not interested, to hide them from feeds.
 - In the YouTube drawer, the settings are the options page in a frame. It runs in the extension's own process, so YouTube's scripts can't read the key as you type it.
 
@@ -63,7 +64,7 @@ Nothing is sent to Anthropic for summaries until you tick Send transcripts to An
 **What goes to youtube.com**
 
 - The transcript request and, when a title isn't already known, an oEmbed lookup for title and channel. Both are same-origin requests from the YouTube page.
-- Nothing extra for the age and promo filters: they remove items from Home responses YouTube already requested, before YouTube renders them.
+- Nothing extra for the age, promo and collection filters: they remove items from Home responses YouTube already requested, before YouTube renders them.
 - The Not interested command, sent through YouTube's own page code when you click Not interested or Watched. For Watched, also the "I've already watched this video" reason from YouTube's response to it.
 
 The extension makes no other network requests.
@@ -107,14 +108,14 @@ Builds `fixtures/age-browse.json` and `fixtures/age-initial.json` for the age fi
 node scripts/sanitise-promo-fixtures.mjs
 ```
 
-Builds `fixtures/promo-initial.json` for the promo filter tests from a Home capture with YouTube featured promos (`fixtures/raw/home-memberships-browse.json`), keeping the feed order and the promos' renderer types.
+Builds `fixtures/promo-initial.json` for the promo filter tests from a Home capture with YouTube featured promos (`fixtures/raw/home-memberships-browse.json`), keeping the feed order, the promos' renderer types and the first collection (a Mix) for the collection filter tests.
 
 ## Project layout
 
 - `src/background.ts`: service worker. Owns storage, the API key and Claude calls; handles messages from the other contexts.
 - `src/claude.ts`: Claude API request, headers, prompt and streamed response parsing.
 - `src/content.ts`: content script. Places the Summarise buttons, runs the drawer, fetches transcripts and handles Not interested.
-- `src/page.ts`: main-world script. Reads YouTube's page data (Home tiles, config), removes old videos and promos from Home responses and sends YouTube's Not interested command.
+- `src/page.ts`: main-world script. Reads YouTube's page data (Home tiles, config), removes old videos, promos and collections from Home responses and sends YouTube's Not interested command.
 - `src/panel.ts`: the summary drawer and its Markdown rendering.
 - `src/youtube.ts`: every YouTube selector, endpoint and JSON path the extension depends on, plus parsing helpers.
 - `src/messages.ts`: message types and helpers between the service worker, content script and page script; settings types.

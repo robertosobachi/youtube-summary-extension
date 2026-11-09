@@ -18,6 +18,7 @@ Copy for the developer dashboard. Keep in step with the manifest and PRIVACY.md.
 > - Hide what you've dealt with: summarised videos drop out of your feeds.
 > - Hide old videos: an optional age cut-off for the Home feed.
 > - Hide promos: optionally remove YouTube's own promo shelves, such as membership and Premium trailers.
+> - Hide Mixes and playlists: optionally remove collection tiles from Home.
 > - Not interested and Watched: one click on a Home tile tells YouTube you've seen it or don't want it.
 > - Copy for chat: copies the title, link, summary and transcript as a prompt for any chat.
 > - Playback speed: one button beside Summarise switches between normal and fast playback, for the videos you do watch.
@@ -36,7 +37,7 @@ Copy for the developer dashboard. Keep in step with the manifest and PRIVACY.md.
 
 **Single purpose:**
 
-> Helps you triage your YouTube feed and decide what's worth watching: it summarises videos with Claude and hides the ones you don't need to see (already summarised, older than a cut-off, YouTube promos, or marked Not interested or Watched).
+> Helps you triage your YouTube feed and decide what's worth watching: it summarises videos with Claude and hides the ones you don't need to see (already summarised, older than a cut-off, YouTube promos, Mixes and playlists, or marked Not interested or Watched).
 
 **Permission justifications:**
 
@@ -44,7 +45,7 @@ Copy for the developer dashboard. Keep in step with the manifest and PRIVACY.md.
 - Host `https://www.youtube.com/*`: the content scripts add the Summarise buttons and drawer, fetch the video transcript, filter the Home feed and add the playback speed button. YouTube is the only site the extension runs on.
 - Host `https://api.anthropic.com/*`: the service worker sends the transcript to Anthropic's Claude API to generate the summary the user asked for, with the user's own API key.
 - Web-accessible `options.html`: the settings page is shown in a frame inside the drawer on YouTube, so the user can set it up without leaving the page.
-- Main-world content script (`page.js`): reads YouTube's page data for the feed tiles, and removes old videos and promos from the Home responses YouTube already requested, before YouTube renders them. Its only requests are YouTube's own Not interested command and, for Watched, the "I've already watched this video" reason, when the user clicks them.
+- Main-world content script (`page.js`): reads YouTube's page data for the feed tiles, and removes old videos, promos and collections from the Home responses YouTube already requested, before YouTube renders them. Its only requests are YouTube's own Not interested command and, for Watched, the "I've already watched this video" reason, when the user clicks them.
 
 **Remote code:** No. All code is in the package.
 
