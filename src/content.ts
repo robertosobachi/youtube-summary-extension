@@ -3,6 +3,7 @@
 import { chatText } from './chat';
 import {
   AGE_KEY,
+  COLLECTIONS_KEY,
   CONTENT_SOURCE,
   DEFAULT_SPEED,
   PAGE_SOURCE,
@@ -227,6 +228,8 @@ chrome.runtime.onMessage.addListener((msg: TabMessage, sender, sendResponse) => 
     mirrorFilter(msg.maxAgeDays);
   } else if (msg.type === 'promos/set') {
     applyPromos(msg.hidePromos);
+  } else if (msg.type === 'collections/set') {
+    applyCollections(msg.hideCollections);
   } else if (msg.type === 'speed/set') {
     fastSpeed = msg.speed;
     showSpeed();
@@ -268,10 +271,25 @@ function applyPromos(hide: boolean): void {
   else promoStyle.remove();
 }
 
+// Collections the same way: page.ts removes them from responses, this hides those drawn.
+const collectionStyle = document.createElement('style');
+collectionStyle.textContent = `${SELECTORS.collectionTile} { display: none !important; }`;
+
+function applyCollections(hide: boolean): void {
+  try {
+    localStorage.setItem(COLLECTIONS_KEY, hide ? '1' : '0');
+  } catch {
+    // Storage blocked: page.ts leaves responses alone and the style does all the hiding.
+  }
+  if (hide) (document.head ?? document.documentElement).append(collectionStyle);
+  else collectionStyle.remove();
+}
+
 send('filter/get', {})
-  .then(({ maxAgeDays, hidePromos }) => {
+  .then(({ maxAgeDays, hidePromos, hideCollections }) => {
     mirrorFilter(maxAgeDays);
     applyPromos(hidePromos);
+    applyCollections(hideCollections);
   })
   .catch(() => {});
 

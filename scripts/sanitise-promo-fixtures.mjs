@@ -1,6 +1,6 @@
-// Builds the promo filter fixture from a private Home capture in fixtures/raw/ holding YouTube
-// featured promos. Keeps each grid item's renderer keys in feed order; promo videos, titles,
-// IDs and channel names become fakes or are dropped.
+// Builds the promo and collection filter fixture from a private Home capture in fixtures/raw/
+// holding YouTube featured promos and a Mix. Keeps each grid item's renderer keys in feed
+// order; promo videos, titles, IDs and channel names become fakes or are dropped.
 // Usage: node scripts/sanitise-promo-fixtures.mjs
 import fs from 'node:fs';
 
@@ -50,6 +50,7 @@ function sanitiseSection(section, index) {
 
 function sanitiseItems(rawItems) {
   let videos = 0;
+  let collections = 0;
   return rawItems.flatMap((item, index) => {
     if (item.continuationItemRenderer) {
       return [{ continuationItemRenderer: { trigger: 'CONTINUATION_TRIGGER_ON_ITEM_SHOWN' } }];
@@ -61,6 +62,24 @@ function sanitiseItems(rawItems) {
     }
     const content = item.richItemRenderer?.content;
     if (content?.adSlotRenderer) return [{ richItemRenderer: { content: { adSlotRenderer: {} } } }];
+    // The first collection, such as a Mix, whatever its position: only its stacked thumbnail
+    // marker is kept.
+    if (content?.lockupViewModel?.contentImage?.collectionThumbnailViewModel) {
+      if (collections++) return [];
+      return [
+        {
+          richItemRenderer: {
+            content: {
+              lockupViewModel: {
+                contentId: 'RDfakemix0001',
+                contentType: content.lockupViewModel.contentType,
+                contentImage: { collectionThumbnailViewModel: {} },
+              },
+            },
+          },
+        },
+      ];
+    }
     if (!content?.lockupViewModel || videos >= VIDEOS) return [];
     const n = ++videos;
     return [

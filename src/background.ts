@@ -11,6 +11,7 @@ import {
   takeEvents,
 } from './claude';
 import {
+  DEFAULT_HIDE_COLLECTIONS,
   DEFAULT_HIDE_PROMOS,
   DEFAULT_LANGS,
   DEFAULT_MAX_AGE_DAYS,
@@ -51,6 +52,7 @@ async function getSettings(): Promise<Settings> {
     langs: DEFAULT_LANGS,
     maxAgeDays: DEFAULT_MAX_AGE_DAYS,
     hidePromos: DEFAULT_HIDE_PROMOS,
+    hideCollections: DEFAULT_HIDE_COLLECTIONS,
     speed: DEFAULT_SPEED,
     ...(settings as Partial<Settings> | undefined),
   };
@@ -70,7 +72,7 @@ function serialised<T>(task: () => Promise<T>): Promise<T> {
 }
 
 function view(settings: Settings): SettingsView {
-  const { apiKey, consent, langs, maxAgeDays, hidePromos, speed } = settings;
+  const { apiKey, consent, langs, maxAgeDays, hidePromos, hideCollections, speed } = settings;
   const keyHint = apiKey.slice(-4);
   return {
     hasKey: Boolean(apiKey),
@@ -79,6 +81,7 @@ function view(settings: Settings): SettingsView {
     langs,
     maxAgeDays,
     hidePromos,
+    hideCollections,
     speed,
   };
 }
@@ -113,6 +116,17 @@ async function savePromos(hidePromos: unknown): Promise<SettingsView> {
     return next;
   });
   await broadcast({ type: 'promos/set', hidePromos: saved.hidePromos });
+  return view(saved);
+}
+
+/** The collections toggle alone, saved as soon as it changes and applied to open tabs at once. */
+async function saveCollections(hideCollections: unknown): Promise<SettingsView> {
+  const saved = await serialised(async () => {
+    const next = { ...(await getSettings()), hideCollections: hideCollections === true };
+    await chrome.storage.local.set({ settings: next });
+    return next;
+  });
+  await broadcast({ type: 'collections/set', hideCollections: saved.hideCollections });
   return view(saved);
 }
 
@@ -313,13 +327,15 @@ async function handle(msg: Message, sender: chrome.runtime.MessageSender): Promi
       return { ready: !summaryBlocker(await getSettings()) };
     case 'promos/save':
       return savePromos(msg.hidePromos);
+    case 'collections/save':
+      return saveCollections(msg.hideCollections);
     case 'speed/save':
       return saveSpeed(msg.speed);
     case 'speed/get':
       return { speed: parseSpeed((await getSettings()).speed) };
     case 'filter/get': {
-      const { maxAgeDays, hidePromos } = await getSettings();
-      return { maxAgeDays, hidePromos };
+      const { maxAgeDays, hidePromos, hideCollections } = await getSettings();
+      return { maxAgeDays, hidePromos, hideCollections };
     }
     case 'summary/get':
       return isVideoId(msg.id) ? ((await getSummaries())[msg.id] ?? null) : null;

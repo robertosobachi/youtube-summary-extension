@@ -1,11 +1,12 @@
 // MAIN world, document_start. Reads YouTube's own page data and passes the public parts to
 // content.ts with postMessage. Never sees the API key or storage. Its only writes are
-// removing videos older than the age cut-off and YouTube featured promos from Home responses
-// before YouTube renders them, YouTube's own Not interested command and, for Watched, the
+// removing videos older than the age cut-off, YouTube featured promos and collections such as
+// Mixes from Home responses before YouTube renders them, YouTube's own Not interested command and, for Watched, the
 // "I've already watched" reason YouTube offers after it, both dispatched through YouTube's
 // own router, and the watch page speed button's rate, set through YouTube's player.
 import {
   AGE_KEY,
+  COLLECTIONS_KEY,
   CONTENT_SOURCE,
   PAGE_SOURCE,
   PROMOS_KEY,
@@ -21,6 +22,7 @@ import {
   homeTiles,
   isHomeResponse,
   navResponse,
+  removeCollections,
   removeOldVideos,
   removePromos,
   sentFeedbackTokens,
@@ -67,13 +69,26 @@ function hidePromos(): boolean {
   }
 }
 
-/** Removes old videos and promos from a Home response in place. True when anything went. */
+/** Read on every response too. content.ts also hides collections already on the page. */
+function hideCollections(): boolean {
+  try {
+    return localStorage.getItem(COLLECTIONS_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Removes old videos, promos and collections from a Home response in place. True when
+ * anything went.
+ */
 function filterHome(data: unknown): boolean {
   if (!isHomeResponse(data)) return false;
   const days = maxAgeDays();
   const old = days > 0 && removeOldVideos(data, days).removed > 0;
   const promos = hidePromos() && removePromos(data) > 0;
-  return old || promos;
+  const collections = hideCollections() && removeCollections(data) > 0;
+  return old || promos || collections;
 }
 
 /** Reads the tiles of a Home response and posts them as one batch. */
@@ -124,7 +139,7 @@ function sentTokens(input: RequestInfo | URL, init?: RequestInit): Promise<strin
   );
 }
 
-/** A browse response with old Home videos removed, or the original if none were. */
+/** A browse response with Home filtered, or the original if nothing was removed. */
 async function filteredBrowse(res: Response): Promise<Response> {
   if (!res.ok) return res;
   try {

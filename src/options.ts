@@ -23,6 +23,7 @@ const consentBox = document.querySelector<HTMLInputElement>('#consent')!;
 const langsList = document.querySelector<HTMLDivElement>('#langs .list')!;
 const maxAgeSelect = document.querySelector<HTMLSelectElement>('#max-age')!;
 const hidePromosBox = document.querySelector<HTMLInputElement>('#hide-promos')!;
+const hideCollectionsBox = document.querySelector<HTMLInputElement>('#hide-collections')!;
 const speedSelect = document.querySelector<HTMLSelectElement>('#speed')!;
 const testButton = document.querySelector<HTMLButtonElement>('#test')!;
 const status = document.querySelector<HTMLOutputElement>('#status')!;
@@ -36,6 +37,7 @@ function show(settings: SettingsView): void {
   maxAgeSelect.value = String(settings.maxAgeDays);
   savedMaxAge = settings.maxAgeDays;
   hidePromosBox.checked = settings.hidePromos;
+  hideCollectionsBox.checked = settings.hideCollections;
   speedSelect.value = String(settings.speed);
 }
 
@@ -112,6 +114,20 @@ hidePromosBox.addEventListener('change', async () => {
   hidePromosBox.checked = hidePromos;
   report(
     hidePromos ? 'Promos hidden.' : 'Promos shown. Reload YouTube for any filtered out.',
+    true,
+  );
+});
+
+// Saved on its own like the promos toggle.
+hideCollectionsBox.addEventListener('change', async () => {
+  const { hideCollections } = await send('collections/save', {
+    hideCollections: hideCollectionsBox.checked,
+  });
+  hideCollectionsBox.checked = hideCollections;
+  report(
+    hideCollections
+      ? 'Mixes and playlists hidden.'
+      : 'Mixes and playlists shown. Reload YouTube for any filtered out.',
     true,
   );
 });

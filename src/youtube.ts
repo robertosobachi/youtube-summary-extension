@@ -41,6 +41,12 @@ export const SELECTORS = {
    */
   promoSection:
     'ytd-rich-section-renderer:has(ytd-brand-video-shelf-renderer, ytd-brand-video-singleton-renderer, ytd-statement-banner-renderer)',
+  /**
+   * Home collection tiles, such as Mixes and playlists, drawn with stacked thumbnails. Home
+   * only: a channel's Playlists tab uses the same tiles.
+   */
+  collectionTile:
+    'ytd-browse[page-subtype="home"] ytd-rich-item-renderer:has(yt-collection-thumbnail-view-model)',
 };
 
 export const BROWSE_PATH = '/youtubei/v1/browse';
@@ -430,14 +436,29 @@ export function isPromoSection(element: unknown): boolean {
   return isObject(content) && PROMO_RENDERERS.some((key) => key in content);
 }
 
+// From a feed array element to the stacked thumbnail every collection lockup has, the same
+// marker as the page element in SELECTORS.collectionTile.
+const FEED_COLLECTION = [...FEED_LOCKUP, 'contentImage', 'collectionThumbnailViewModel'];
+
+/** True for a feed element holding a collection, such as a Mix or a playlist. */
+export function isCollection(element: unknown): boolean {
+  return isObject(at(element, FEED_COLLECTION));
+}
+
 /** Removes, in place, every YouTube featured promo in a feed. Returns how many went. */
-export function removePromos(data: unknown): number {
+export const removePromos = (data: unknown): number => removeWhere(data, isPromoSection);
+
+/** Removes, in place, every collection in a feed. Returns how many went. */
+export const removeCollections = (data: unknown): number => removeWhere(data, isCollection);
+
+/** Removes, in place, every array element at any depth that `matches`. Returns how many went. */
+function removeWhere(data: unknown, matches: (element: unknown) => boolean): number {
   let removed = 0;
   const walk = (node: unknown): void => {
     if (Array.isArray(node)) {
       let write = 0;
       for (const element of node) {
-        if (isPromoSection(element)) {
+        if (matches(element)) {
           removed++;
           continue;
         }

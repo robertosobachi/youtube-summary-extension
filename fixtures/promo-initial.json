@@ -145,6 +145,19 @@
                     }
                   },
                   {
+                    "richItemRenderer": {
+                      "content": {
+                        "lockupViewModel": {
+                          "contentId": "RDfakemix0001",
+                          "contentType": "LOCKUP_CONTENT_TYPE_PLAYLIST",
+                          "contentImage": {
+                            "collectionThumbnailViewModel": {}
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
                     "continuationItemRenderer": {
                       "trigger": "CONTINUATION_TRIGGER_ON_ITEM_SHOWN"
                     }
