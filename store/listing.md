@@ -17,7 +17,7 @@ Copy for the developer dashboard. Keep in step with the manifest and PRIVACY.md.
 > - Summarise: a Summarise button on the watch page and on Home and Subscriptions tiles. The summary opens in a side drawer: a title, a short summary, the main points and a key takeaway, built from the video's transcript by Anthropic's Claude.
 > - Hide what you've dealt with: summarised videos drop out of your feeds.
 > - Hide old videos: an optional age cut-off for the Home feed.
-> - Hide promos: optionally remove YouTube's own promo shelves, such as membership and Premium trailers.
+> - Hide promos: optionally remove YouTube's own promo shelves, such as membership and Premium trailers, and the featured banner on Home.
 > - Hide Mixes and playlists: optionally remove collection tiles from Home.
 > - Hide comments: optionally hide the comments under a video.
 > - Hide related videos: optionally hide the suggestions beside a video.
