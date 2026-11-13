@@ -40,7 +40,7 @@ With no API key saved, the settings open in the drawer on YouTube: once when the
 - **Anthropic API key:** create one in the Claude Console at [platform.claude.com/settings/keys](https://platform.claude.com/settings/keys). Leave the field empty later to keep the saved key.
 - **Send transcripts to Anthropic:** under the key field, required to save a key. Untick it to stop summaries: Summarise then opens the settings and nothing goes to Anthropic.
 - **Summary languages:** tick one or more. Defaults to English.
-- **Hide Home videos older than:** 1 week to 2 years, or Off. Applies to videos loaded after saving; reload YouTube to refilter the ones already shown.
+- **Hide Home videos older than:** 1 day to 2 years, or Off. Applies to videos loaded after saving; reload YouTube to refilter the ones already shown.
 - **Hide YouTube featured promos** and **Hide Mixes and playlists:** saved as soon as you tick or untick them, no Save needed.
 - **Fast playback speed:** 1.25x to 2x, the speed button's faster rate. Saved as soon as you pick it, too.
 - **Hide comments** and **Hide related videos:** saved as soon as you tick or untick them, too.
