@@ -37,10 +37,11 @@ export const SELECTORS = {
   ],
   /**
    * "YouTube featured" promos in a feed: the memberships shelf, Premium trailers, Premium
-   * offer banners and the like. Matched by renderer, so in any language.
+   * offer banners and the like, plus the featured banner YouTube puts above Home's grid.
+   * Matched by renderer, so in any language.
    */
   promoSection:
-    'ytd-rich-section-renderer:has(ytd-brand-video-shelf-renderer, ytd-brand-video-singleton-renderer, ytd-statement-banner-renderer)',
+    'ytd-rich-section-renderer:has(ytd-brand-video-shelf-renderer, ytd-brand-video-singleton-renderer, ytd-statement-banner-renderer), ytd-rich-grid-renderer #big-yoodle:has(ytd-statement-banner-renderer)',
   /**
    * Home collection tiles, such as Mixes and playlists, drawn with stacked thumbnails. Home
    * only: a channel's Playlists tab uses the same tiles.
@@ -428,6 +429,7 @@ export function removeOldVideos(
 }
 
 // The renderers of "YouTube featured" promos, as the page elements in SELECTORS.promoSection.
+// The banner above Home's grid sits outside the feed array, so only CSS hides that one.
 const PROMO_RENDERERS = [
   'brandVideoShelfRenderer',
   'brandVideoSingletonRenderer',
