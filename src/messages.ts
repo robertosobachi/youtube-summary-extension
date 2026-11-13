@@ -13,6 +13,7 @@ export const LANGS = (
 /** 0 means off. Steps follow YouTube's rounded dates, so finer values would behave the same. */
 export const MAX_AGE_OPTIONS: { label: string; days: number }[] = [
   { label: 'Off', days: 0 },
+  { label: '1 day', days: 1 },
   { label: '1 week', days: 7 },
   { label: '1 month', days: 30 },
   { label: '3 months', days: 90 },
