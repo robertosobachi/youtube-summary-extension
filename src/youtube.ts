@@ -48,6 +48,11 @@ export const SELECTORS = {
    */
   collectionTile:
     'ytd-browse[page-subtype="home"] ytd-rich-item-renderer:has(yt-collection-thumbnail-view-model)',
+  /**
+   * The YouTube Playables shelf of mini game cards. Matched by its cards, not its title, so in
+   * any language and on any feed it appears in.
+   */
+  playables: 'ytd-rich-section-renderer:has(ytd-mini-game-card-view-model)',
   /** The watch page comments section, header and threads both. */
   comments: 'ytd-watch-flexy ytd-comments#comments',
   /** The watch page related videos list, beside or below the video. Not its companion ad slot. */

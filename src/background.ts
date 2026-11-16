@@ -13,6 +13,7 @@ import {
 import {
   DEFAULT_HIDE_COLLECTIONS,
   DEFAULT_HIDE_COMMENTS,
+  DEFAULT_HIDE_PLAYABLES,
   DEFAULT_HIDE_PROMOS,
   DEFAULT_HIDE_RELATED,
   DEFAULT_LANGS,
@@ -55,6 +56,7 @@ async function getSettings(): Promise<Settings> {
     maxAgeDays: DEFAULT_MAX_AGE_DAYS,
     hidePromos: DEFAULT_HIDE_PROMOS,
     hideCollections: DEFAULT_HIDE_COLLECTIONS,
+    hidePlayables: DEFAULT_HIDE_PLAYABLES,
     hideComments: DEFAULT_HIDE_COMMENTS,
     hideRelated: DEFAULT_HIDE_RELATED,
     speed: DEFAULT_SPEED,
@@ -83,6 +85,7 @@ function view(settings: Settings): SettingsView {
     maxAgeDays,
     hidePromos,
     hideCollections,
+    hidePlayables,
     hideComments,
     hideRelated,
     speed,
@@ -96,6 +99,7 @@ function view(settings: Settings): SettingsView {
     maxAgeDays,
     hidePromos,
     hideCollections,
+    hidePlayables,
     hideComments,
     hideRelated,
     speed,
@@ -143,6 +147,17 @@ async function saveCollections(hideCollections: unknown): Promise<SettingsView> 
     return next;
   });
   await broadcast({ type: 'collections/set', hideCollections: saved.hideCollections });
+  return view(saved);
+}
+
+/** The Playables toggle alone, saved and applied to open tabs at once. CSS only, like comments. */
+async function savePlayables(hidePlayables: unknown): Promise<SettingsView> {
+  const saved = await serialised(async () => {
+    const next = { ...(await getSettings()), hidePlayables: hidePlayables === true };
+    await chrome.storage.local.set({ settings: next });
+    return next;
+  });
+  await broadcast({ type: 'playables/set', hidePlayables: saved.hidePlayables });
   return view(saved);
 }
 
@@ -367,6 +382,8 @@ async function handle(msg: Message, sender: chrome.runtime.MessageSender): Promi
       return savePromos(msg.hidePromos);
     case 'collections/save':
       return saveCollections(msg.hideCollections);
+    case 'playables/save':
+      return savePlayables(msg.hidePlayables);
     case 'comments/save':
       return saveComments(msg.hideComments);
     case 'related/save':
@@ -376,9 +393,9 @@ async function handle(msg: Message, sender: chrome.runtime.MessageSender): Promi
     case 'speed/get':
       return { speed: parseSpeed((await getSettings()).speed) };
     case 'filter/get': {
-      const { maxAgeDays, hidePromos, hideCollections, hideComments, hideRelated } =
+      const { maxAgeDays, hidePromos, hideCollections, hidePlayables, hideComments, hideRelated } =
         await getSettings();
-      return { maxAgeDays, hidePromos, hideCollections, hideComments, hideRelated };
+      return { maxAgeDays, hidePromos, hideCollections, hidePlayables, hideComments, hideRelated };
     }
     case 'summary/get':
       return isVideoId(msg.id) ? ((await getSummaries())[msg.id] ?? null) : null;

@@ -41,6 +41,9 @@ export const PROMOS_KEY = 'yts:hidePromos';
 
 export const DEFAULT_HIDE_COLLECTIONS = false;
 
+/** A feed toggle applied by CSS alone, so not mirrored to localStorage either. */
+export const DEFAULT_HIDE_PLAYABLES = false;
+
 /** youtube.com localStorage key: content.ts mirrors the collections toggle there, '1' for on. */
 export const COLLECTIONS_KEY = 'yts:hideCollections';
 
@@ -75,6 +78,7 @@ export type Settings = {
   maxAgeDays: number;
   hidePromos: boolean;
   hideCollections: boolean;
+  hidePlayables: boolean;
   hideComments: boolean;
   hideRelated: boolean;
   speed: number;
@@ -89,6 +93,7 @@ export type SettingsView = {
   maxAgeDays: number;
   hidePromos: boolean;
   hideCollections: boolean;
+  hidePlayables: boolean;
   hideComments: boolean;
   hideRelated: boolean;
   speed: number;
@@ -128,6 +133,7 @@ type Api = {
   // Saved on its own as the box is ticked, so open tabs apply it at once.
   'promos/save': { req: { hidePromos: boolean }; res: SettingsView };
   'collections/save': { req: { hideCollections: boolean }; res: SettingsView };
+  'playables/save': { req: { hidePlayables: boolean }; res: SettingsView };
   'comments/save': { req: { hideComments: boolean }; res: SettingsView };
   'related/save': { req: { hideRelated: boolean }; res: SettingsView };
   // Saved on its own as it's picked, and handed to open tabs for the button's label.
@@ -141,6 +147,7 @@ type Api = {
       maxAgeDays: number;
       hidePromos: boolean;
       hideCollections: boolean;
+      hidePlayables: boolean;
       hideComments: boolean;
       hideRelated: boolean;
     };
@@ -170,6 +177,7 @@ export const PRIVILEGED: readonly MessageType[] = [
   'settings/drawer',
   'promos/save',
   'collections/save',
+  'playables/save',
   'comments/save',
   'related/save',
   'speed/save',
@@ -181,6 +189,7 @@ export type TabMessage =
   | { type: 'filter/set'; maxAgeDays: number }
   | { type: 'promos/set'; hidePromos: boolean }
   | { type: 'collections/set'; hideCollections: boolean }
+  | { type: 'playables/set'; hidePlayables: boolean }
   | { type: 'comments/set'; hideComments: boolean }
   | { type: 'related/set'; hideRelated: boolean }
   | { type: 'speed/set'; speed: number };

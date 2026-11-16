@@ -24,6 +24,7 @@ const langsList = document.querySelector<HTMLDivElement>('#langs .list')!;
 const maxAgeSelect = document.querySelector<HTMLSelectElement>('#max-age')!;
 const hidePromosBox = document.querySelector<HTMLInputElement>('#hide-promos')!;
 const hideCollectionsBox = document.querySelector<HTMLInputElement>('#hide-collections')!;
+const hidePlayablesBox = document.querySelector<HTMLInputElement>('#hide-playables')!;
 const hideCommentsBox = document.querySelector<HTMLInputElement>('#hide-comments')!;
 const hideRelatedBox = document.querySelector<HTMLInputElement>('#hide-related')!;
 const speedSelect = document.querySelector<HTMLSelectElement>('#speed')!;
@@ -40,6 +41,7 @@ function show(settings: SettingsView): void {
   savedMaxAge = settings.maxAgeDays;
   hidePromosBox.checked = settings.hidePromos;
   hideCollectionsBox.checked = settings.hideCollections;
+  hidePlayablesBox.checked = settings.hidePlayables;
   hideCommentsBox.checked = settings.hideComments;
   hideRelatedBox.checked = settings.hideRelated;
   speedSelect.value = String(settings.speed);
@@ -134,6 +136,15 @@ hideCollectionsBox.addEventListener('change', async () => {
       : 'Mixes and playlists shown. Reload YouTube for any filtered out.',
     true,
   );
+});
+
+// Saved on its own too. CSS only, so open tabs show or hide the shelf without a reload.
+hidePlayablesBox.addEventListener('change', async () => {
+  const { hidePlayables } = await send('playables/save', {
+    hidePlayables: hidePlayablesBox.checked,
+  });
+  hidePlayablesBox.checked = hidePlayables;
+  report(hidePlayables ? 'Playables hidden.' : 'Playables shown.', true);
 });
 
 // Saved on its own too. CSS only, so open tabs show or hide comments without a reload.

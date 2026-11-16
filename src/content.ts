@@ -230,6 +230,8 @@ chrome.runtime.onMessage.addListener((msg: TabMessage, sender, sendResponse) => 
     applyPromos(msg.hidePromos);
   } else if (msg.type === 'collections/set') {
     applyCollections(msg.hideCollections);
+  } else if (msg.type === 'playables/set') {
+    applyPlayables(msg.hidePlayables);
   } else if (msg.type === 'comments/set') {
     applyComments(msg.hideComments);
   } else if (msg.type === 'related/set') {
@@ -289,6 +291,16 @@ function applyCollections(hide: boolean): void {
   else collectionStyle.remove();
 }
 
+// The Playables shelf by CSS alone: it's one full-width section, so hiding it leaves the grid
+// and infinite scroll as they were, and removing the style brings it back without a reload.
+const playablesStyle = document.createElement('style');
+playablesStyle.textContent = `${SELECTORS.playables} { display: none !important; }`;
+
+function applyPlayables(hide: boolean): void {
+  if (hide) (document.head ?? document.documentElement).append(playablesStyle);
+  else playablesStyle.remove();
+}
+
 // Comments by CSS alone: hidden, their lazy continuation never scrolls into view, so YouTube
 // doesn't fetch them, and removing the style lets it load them without a reload.
 const commentStyle = document.createElement('style');
@@ -310,10 +322,11 @@ function applyRelated(hide: boolean): void {
 }
 
 send('filter/get', {})
-  .then(({ maxAgeDays, hidePromos, hideCollections, hideComments, hideRelated }) => {
+  .then(({ maxAgeDays, hidePromos, hideCollections, hidePlayables, hideComments, hideRelated }) => {
     mirrorFilter(maxAgeDays);
     applyPromos(hidePromos);
     applyCollections(hideCollections);
+    applyPlayables(hidePlayables);
     applyComments(hideComments);
     applyRelated(hideRelated);
   })
