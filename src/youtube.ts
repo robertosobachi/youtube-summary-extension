@@ -53,6 +53,12 @@ export const SELECTORS = {
    * any language and on any feed it appears in.
    */
   playables: 'ytd-rich-section-renderer:has(ytd-mini-game-card-view-model)',
+  /**
+   * Home YouTube Movies tiles, free with ads or to buy or rent. Matched by their commerce badge,
+   * not its text, so in any language.
+   */
+  movies:
+    'ytd-browse[page-subtype="home"] ytd-rich-item-renderer:has(ytd-rich-grid-media .ytBadgeShapeCommerce)',
   /** The watch page comments section, header and threads both. */
   comments: 'ytd-watch-flexy ytd-comments#comments',
   /** The watch page related videos list, beside or below the video. Not its companion ad slot. */

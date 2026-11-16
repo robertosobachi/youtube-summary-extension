@@ -44,6 +44,9 @@ export const DEFAULT_HIDE_COLLECTIONS = false;
 /** A feed toggle applied by CSS alone, so not mirrored to localStorage either. */
 export const DEFAULT_HIDE_PLAYABLES = false;
 
+/** CSS alone too, so not mirrored to localStorage. */
+export const DEFAULT_HIDE_MOVIES = false;
+
 /** youtube.com localStorage key: content.ts mirrors the collections toggle there, '1' for on. */
 export const COLLECTIONS_KEY = 'yts:hideCollections';
 
@@ -79,6 +82,7 @@ export type Settings = {
   hidePromos: boolean;
   hideCollections: boolean;
   hidePlayables: boolean;
+  hideMovies: boolean;
   hideComments: boolean;
   hideRelated: boolean;
   speed: number;
@@ -94,6 +98,7 @@ export type SettingsView = {
   hidePromos: boolean;
   hideCollections: boolean;
   hidePlayables: boolean;
+  hideMovies: boolean;
   hideComments: boolean;
   hideRelated: boolean;
   speed: number;
@@ -134,6 +139,7 @@ type Api = {
   'promos/save': { req: { hidePromos: boolean }; res: SettingsView };
   'collections/save': { req: { hideCollections: boolean }; res: SettingsView };
   'playables/save': { req: { hidePlayables: boolean }; res: SettingsView };
+  'movies/save': { req: { hideMovies: boolean }; res: SettingsView };
   'comments/save': { req: { hideComments: boolean }; res: SettingsView };
   'related/save': { req: { hideRelated: boolean }; res: SettingsView };
   // Saved on its own as it's picked, and handed to open tabs for the button's label.
@@ -148,6 +154,7 @@ type Api = {
       hidePromos: boolean;
       hideCollections: boolean;
       hidePlayables: boolean;
+      hideMovies: boolean;
       hideComments: boolean;
       hideRelated: boolean;
     };
@@ -178,6 +185,7 @@ export const PRIVILEGED: readonly MessageType[] = [
   'promos/save',
   'collections/save',
   'playables/save',
+  'movies/save',
   'comments/save',
   'related/save',
   'speed/save',
@@ -190,6 +198,7 @@ export type TabMessage =
   | { type: 'promos/set'; hidePromos: boolean }
   | { type: 'collections/set'; hideCollections: boolean }
   | { type: 'playables/set'; hidePlayables: boolean }
+  | { type: 'movies/set'; hideMovies: boolean }
   | { type: 'comments/set'; hideComments: boolean }
   | { type: 'related/set'; hideRelated: boolean }
   | { type: 'speed/set'; speed: number };

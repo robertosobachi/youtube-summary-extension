@@ -232,6 +232,8 @@ chrome.runtime.onMessage.addListener((msg: TabMessage, sender, sendResponse) => 
     applyCollections(msg.hideCollections);
   } else if (msg.type === 'playables/set') {
     applyPlayables(msg.hidePlayables);
+  } else if (msg.type === 'movies/set') {
+    applyMovies(msg.hideMovies);
   } else if (msg.type === 'comments/set') {
     applyComments(msg.hideComments);
   } else if (msg.type === 'related/set') {
@@ -301,6 +303,16 @@ function applyPlayables(hide: boolean): void {
   else playablesStyle.remove();
 }
 
+// YouTube Movies tiles by CSS alone too: the grid reflows around them, and removing the style
+// brings them back without a reload.
+const moviesStyle = document.createElement('style');
+moviesStyle.textContent = `${SELECTORS.movies} { display: none !important; }`;
+
+function applyMovies(hide: boolean): void {
+  if (hide) (document.head ?? document.documentElement).append(moviesStyle);
+  else moviesStyle.remove();
+}
+
 // Comments by CSS alone: hidden, their lazy continuation never scrolls into view, so YouTube
 // doesn't fetch them, and removing the style lets it load them without a reload.
 const commentStyle = document.createElement('style');
@@ -322,11 +334,14 @@ function applyRelated(hide: boolean): void {
 }
 
 send('filter/get', {})
-  .then(({ maxAgeDays, hidePromos, hideCollections, hidePlayables, hideComments, hideRelated }) => {
+  .then((filter) => {
+    const { maxAgeDays, hidePromos, hideCollections, hidePlayables, hideMovies } = filter;
+    const { hideComments, hideRelated } = filter;
     mirrorFilter(maxAgeDays);
     applyPromos(hidePromos);
     applyCollections(hideCollections);
     applyPlayables(hidePlayables);
+    applyMovies(hideMovies);
     applyComments(hideComments);
     applyRelated(hideRelated);
   })

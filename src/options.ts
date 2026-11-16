@@ -25,6 +25,7 @@ const maxAgeSelect = document.querySelector<HTMLSelectElement>('#max-age')!;
 const hidePromosBox = document.querySelector<HTMLInputElement>('#hide-promos')!;
 const hideCollectionsBox = document.querySelector<HTMLInputElement>('#hide-collections')!;
 const hidePlayablesBox = document.querySelector<HTMLInputElement>('#hide-playables')!;
+const hideMoviesBox = document.querySelector<HTMLInputElement>('#hide-movies')!;
 const hideCommentsBox = document.querySelector<HTMLInputElement>('#hide-comments')!;
 const hideRelatedBox = document.querySelector<HTMLInputElement>('#hide-related')!;
 const speedSelect = document.querySelector<HTMLSelectElement>('#speed')!;
@@ -42,6 +43,7 @@ function show(settings: SettingsView): void {
   hidePromosBox.checked = settings.hidePromos;
   hideCollectionsBox.checked = settings.hideCollections;
   hidePlayablesBox.checked = settings.hidePlayables;
+  hideMoviesBox.checked = settings.hideMovies;
   hideCommentsBox.checked = settings.hideComments;
   hideRelatedBox.checked = settings.hideRelated;
   speedSelect.value = String(settings.speed);
@@ -145,6 +147,13 @@ hidePlayablesBox.addEventListener('change', async () => {
   });
   hidePlayablesBox.checked = hidePlayables;
   report(hidePlayables ? 'Playables hidden.' : 'Playables shown.', true);
+});
+
+// Saved on its own too. CSS only, so open tabs show or hide the tiles without a reload.
+hideMoviesBox.addEventListener('change', async () => {
+  const { hideMovies } = await send('movies/save', { hideMovies: hideMoviesBox.checked });
+  hideMoviesBox.checked = hideMovies;
+  report(hideMovies ? 'Movies hidden.' : 'Movies shown.', true);
 });
 
 // Saved on its own too. CSS only, so open tabs show or hide comments without a reload.
