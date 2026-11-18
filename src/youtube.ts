@@ -59,6 +59,11 @@ export const SELECTORS = {
    */
   movies:
     'ytd-browse[page-subtype="home"] ytd-rich-item-renderer:has(ytd-rich-grid-media .ytBadgeShapeCommerce)',
+  /**
+   * Feed rating surveys, such as "What did you think of this video?". Matched by renderer, not
+   * text, so in any language.
+   */
+  surveys: 'ytd-rich-section-renderer:has(ytd-inline-survey-renderer)',
   /** The watch page comments section, header and threads both. */
   comments: 'ytd-watch-flexy ytd-comments#comments',
   /** The watch page related videos list, beside or below the video. Not its companion ad slot. */

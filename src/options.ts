@@ -26,6 +26,7 @@ const hidePromosBox = document.querySelector<HTMLInputElement>('#hide-promos')!;
 const hideCollectionsBox = document.querySelector<HTMLInputElement>('#hide-collections')!;
 const hidePlayablesBox = document.querySelector<HTMLInputElement>('#hide-playables')!;
 const hideMoviesBox = document.querySelector<HTMLInputElement>('#hide-movies')!;
+const hideSurveysBox = document.querySelector<HTMLInputElement>('#hide-surveys')!;
 const hideCommentsBox = document.querySelector<HTMLInputElement>('#hide-comments')!;
 const hideRelatedBox = document.querySelector<HTMLInputElement>('#hide-related')!;
 const speedSelect = document.querySelector<HTMLSelectElement>('#speed')!;
@@ -44,6 +45,7 @@ function show(settings: SettingsView): void {
   hideCollectionsBox.checked = settings.hideCollections;
   hidePlayablesBox.checked = settings.hidePlayables;
   hideMoviesBox.checked = settings.hideMovies;
+  hideSurveysBox.checked = settings.hideSurveys;
   hideCommentsBox.checked = settings.hideComments;
   hideRelatedBox.checked = settings.hideRelated;
   speedSelect.value = String(settings.speed);
@@ -154,6 +156,13 @@ hideMoviesBox.addEventListener('change', async () => {
   const { hideMovies } = await send('movies/save', { hideMovies: hideMoviesBox.checked });
   hideMoviesBox.checked = hideMovies;
   report(hideMovies ? 'Movies hidden.' : 'Movies shown.', true);
+});
+
+// Saved on its own too. CSS only, so open tabs show or hide the surveys without a reload.
+hideSurveysBox.addEventListener('change', async () => {
+  const { hideSurveys } = await send('surveys/save', { hideSurveys: hideSurveysBox.checked });
+  hideSurveysBox.checked = hideSurveys;
+  report(hideSurveys ? 'Surveys hidden.' : 'Surveys shown.', true);
 });
 
 // Saved on its own too. CSS only, so open tabs show or hide comments without a reload.

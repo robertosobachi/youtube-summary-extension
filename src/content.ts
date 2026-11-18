@@ -234,6 +234,8 @@ chrome.runtime.onMessage.addListener((msg: TabMessage, sender, sendResponse) => 
     applyPlayables(msg.hidePlayables);
   } else if (msg.type === 'movies/set') {
     applyMovies(msg.hideMovies);
+  } else if (msg.type === 'surveys/set') {
+    applySurveys(msg.hideSurveys);
   } else if (msg.type === 'comments/set') {
     applyComments(msg.hideComments);
   } else if (msg.type === 'related/set') {
@@ -313,6 +315,16 @@ function applyMovies(hide: boolean): void {
   else moviesStyle.remove();
 }
 
+// Rating surveys by CSS alone too: the grid closes the gap, and removing the style brings them
+// back without a reload.
+const surveysStyle = document.createElement('style');
+surveysStyle.textContent = `${SELECTORS.surveys} { display: none !important; }`;
+
+function applySurveys(hide: boolean): void {
+  if (hide) (document.head ?? document.documentElement).append(surveysStyle);
+  else surveysStyle.remove();
+}
+
 // Comments by CSS alone: hidden, their lazy continuation never scrolls into view, so YouTube
 // doesn't fetch them, and removing the style lets it load them without a reload.
 const commentStyle = document.createElement('style');
@@ -336,12 +348,13 @@ function applyRelated(hide: boolean): void {
 send('filter/get', {})
   .then((filter) => {
     const { maxAgeDays, hidePromos, hideCollections, hidePlayables, hideMovies } = filter;
-    const { hideComments, hideRelated } = filter;
+    const { hideSurveys, hideComments, hideRelated } = filter;
     mirrorFilter(maxAgeDays);
     applyPromos(hidePromos);
     applyCollections(hideCollections);
     applyPlayables(hidePlayables);
     applyMovies(hideMovies);
+    applySurveys(hideSurveys);
     applyComments(hideComments);
     applyRelated(hideRelated);
   })

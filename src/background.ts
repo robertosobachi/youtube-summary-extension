@@ -17,6 +17,7 @@ import {
   DEFAULT_HIDE_PLAYABLES,
   DEFAULT_HIDE_PROMOS,
   DEFAULT_HIDE_RELATED,
+  DEFAULT_HIDE_SURVEYS,
   DEFAULT_LANGS,
   DEFAULT_MAX_AGE_DAYS,
   DEFAULT_SPEED,
@@ -59,6 +60,7 @@ async function getSettings(): Promise<Settings> {
     hideCollections: DEFAULT_HIDE_COLLECTIONS,
     hidePlayables: DEFAULT_HIDE_PLAYABLES,
     hideMovies: DEFAULT_HIDE_MOVIES,
+    hideSurveys: DEFAULT_HIDE_SURVEYS,
     hideComments: DEFAULT_HIDE_COMMENTS,
     hideRelated: DEFAULT_HIDE_RELATED,
     speed: DEFAULT_SPEED,
@@ -89,6 +91,7 @@ function view(settings: Settings): SettingsView {
     hideCollections,
     hidePlayables,
     hideMovies,
+    hideSurveys,
     hideComments,
     hideRelated,
     speed,
@@ -104,6 +107,7 @@ function view(settings: Settings): SettingsView {
     hideCollections,
     hidePlayables,
     hideMovies,
+    hideSurveys,
     hideComments,
     hideRelated,
     speed,
@@ -173,6 +177,17 @@ async function saveMovies(hideMovies: unknown): Promise<SettingsView> {
     return next;
   });
   await broadcast({ type: 'movies/set', hideMovies: saved.hideMovies });
+  return view(saved);
+}
+
+/** The surveys toggle alone, saved and applied to open tabs at once. CSS only, like Movies. */
+async function saveSurveys(hideSurveys: unknown): Promise<SettingsView> {
+  const saved = await serialised(async () => {
+    const next = { ...(await getSettings()), hideSurveys: hideSurveys === true };
+    await chrome.storage.local.set({ settings: next });
+    return next;
+  });
+  await broadcast({ type: 'surveys/set', hideSurveys: saved.hideSurveys });
   return view(saved);
 }
 
@@ -401,6 +416,8 @@ async function handle(msg: Message, sender: chrome.runtime.MessageSender): Promi
       return savePlayables(msg.hidePlayables);
     case 'movies/save':
       return saveMovies(msg.hideMovies);
+    case 'surveys/save':
+      return saveSurveys(msg.hideSurveys);
     case 'comments/save':
       return saveComments(msg.hideComments);
     case 'related/save':
@@ -412,13 +429,14 @@ async function handle(msg: Message, sender: chrome.runtime.MessageSender): Promi
     case 'filter/get': {
       const settings = await getSettings();
       const { maxAgeDays, hidePromos, hideCollections, hidePlayables, hideMovies } = settings;
-      const { hideComments, hideRelated } = settings;
+      const { hideSurveys, hideComments, hideRelated } = settings;
       return {
         maxAgeDays,
         hidePromos,
         hideCollections,
         hidePlayables,
         hideMovies,
+        hideSurveys,
         hideComments,
         hideRelated,
       };
