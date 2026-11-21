@@ -187,7 +187,8 @@ async function fetchTranscript(id: string, signal: AbortSignal): Promise<string 
   const cfg = await innertubeConfig();
   if (!cfg) throw new Error("Couldn't read YouTube's page config. Reload the page and try again.");
   const res = await fetch(TRANSCRIPT_PATH, { ...transcriptRequest(cfg, id), signal });
-  if (!res.ok) return null;
+  if (!res.ok)
+    throw new Error(`YouTube returned ${res.status} for the transcript. Try again later.`);
   const lines = extractTranscript(await res.json());
   return lines.length ? transcriptText(lines) : null;
 }
